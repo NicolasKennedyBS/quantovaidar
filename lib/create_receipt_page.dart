@@ -10,6 +10,7 @@ class CreateReceiptPage extends StatefulWidget {
 }
 
 class _CreateReceiptPageState extends State<CreateReceiptPage> {
+  final _issuerController = TextEditingController();
   final _clientController = TextEditingController();
   final _serviceController = TextEditingController();
   final _valueController = TextEditingController();
@@ -34,58 +35,45 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              "Preencha os dados do serviço",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: TextField(
+                controller: _issuerController,
+                decoration: const InputDecoration(
+                  labelText: "Quem está emitindo? (Seu Nome/Empresa)",
+                  border: InputBorder.none,
+                  icon: Icon(Icons.badge, color: Colors.blue),
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
+
+            const Text("Dados do Serviço", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
 
             TextField(
               controller: _clientController,
-              decoration: const InputDecoration(
-                labelText: "Nome do Cliente",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
-              ),
+              decoration: const InputDecoration(labelText: "Nome do Cliente", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
             ),
             const SizedBox(height: 16),
 
             TextField(
               controller: _serviceController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: "Descrição do Serviço / Produto",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.description),
-                alignLabelWithHint: true,
-              ),
+              decoration: const InputDecoration(labelText: "Descrição do Serviço", border: OutlineInputBorder(), prefixIcon: Icon(Icons.description)),
             ),
             const SizedBox(height: 16),
 
             Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Valor (R\$)",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.attach_money),
-                    ),
-                  ),
-                ),
+                Expanded(child: TextField(controller: _valueController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Valor (R\$)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.attach_money)))),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _dateController,
-                    decoration: const InputDecoration(
-                      labelText: "Data",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.calendar_today),
-                    ),
-                  ),
-                ),
+                Expanded(child: TextField(controller: _dateController, decoration: const InputDecoration(labelText: "Data", border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today)))),
               ],
             ),
             const SizedBox(height: 40),
@@ -94,27 +82,15 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
               height: 55,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  if (_clientController.text.isEmpty || _valueController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Opa! Preencha pelo menos o Nome e o Valor."),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                  if (_issuerController.text.isEmpty || _clientController.text.isEmpty || _valueController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha: Seu Nome, Cliente e Valor."), backgroundColor: Colors.red));
                     return;
                   }
-
                   _showModelSelection(context);
                 },
                 icon: const Icon(Icons.picture_as_pdf),
-                label: const Text(
-                  "GERAR DOCUMENTO",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
-                  foregroundColor: Colors.white,
-                ),
+                label: const Text("GERAR DOCUMENTO", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white),
               ),
             ),
           ],
@@ -126,46 +102,35 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   void _showModelSelection(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
         return Container(
           padding: const EdgeInsets.all(20),
-          height: 320,
+          height: MediaQuery.of(context).size.height * 0.7,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Escolha o Modelo",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-
-              ListTile(
-                leading: const Icon(Icons.description_outlined, size: 40),
-                title: const Text("Modelo Simples"),
-                subtitle: const Text("Econômico, ideal para impressão P&B."),
-                onTap: () {
-                  Navigator.pop(context);
-                  _generatePdf(ReceiptStyle.simple);
-                },
-              ),
-              const Divider(),
-
-              ListTile(
-                leading: Icon(Icons.star, size: 40, color: Colors.blue[800]),
-                title: Text("Modelo Executivo", style: TextStyle(color: Colors.blue[900], fontWeight: FontWeight.bold)),
-                subtitle: const Text("Design moderno com cabeçalho azul."),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(10)),
-                  child: const Text("TOP", style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text("Escolha o Estilo", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))
+              ]),
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView(
+                  children: [
+                    _buildModelOption(context, "Simples", "Econômico, ideal para P&B", Icons.description_outlined, Colors.grey, ReceiptStyle.simple),
+                    _buildModelOption(context, "Executivo", "Azul Profissional", Icons.business, Colors.blue[800]!, ReceiptStyle.modern),
+                    _buildModelOption(context, "Tech Dev", "Hacker", Icons.terminal, Colors.green, ReceiptStyle.tech),
+                    _buildModelOption(context, "Premium Gold", "Sofisticado", Icons.workspace_premium, Colors.amber[800]!, ReceiptStyle.premium),
+                    _buildModelOption(context, "Minimalista", "Design Clean", Icons.circle_outlined, Colors.black, ReceiptStyle.minimal),
+                    _buildModelOption(context, "Obras & Construção", "Forte e Visível", Icons.construction, Colors.orange[800]!, ReceiptStyle.construction),
+                    _buildModelOption(context, "Criativo", "Roxo Moderno", Icons.auto_awesome, Colors.purple, ReceiptStyle.creative),
+                    _buildModelOption(context, "Saúde & Bem-estar", "Relaxante", Icons.spa, Colors.teal, ReceiptStyle.health),
+                    _buildModelOption(context, "Retrô", "Nota Fiscal Antiga", Icons.receipt, Colors.brown, ReceiptStyle.retro),
+                    _buildModelOption(context, "Corporativo", "Internacional", Icons.apartment, Colors.red[900]!, ReceiptStyle.corporate),
+                  ],
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _generatePdf(ReceiptStyle.modern);
-                },
               ),
             ],
           ),
@@ -174,8 +139,27 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     );
   }
 
+  Widget _buildModelOption(BuildContext context, String title, String subtitle, IconData icon, Color color, ReceiptStyle style) {
+    return Card(
+      elevation: 0,
+      color: Colors.grey[50],
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        onTap: () {
+          Navigator.pop(context);
+          _generatePdf(style);
+        },
+      ),
+    );
+  }
+
   void _generatePdf(ReceiptStyle style) {
     PdfUtil.generateAndShowReceipt(
+      issuerName: _issuerController.text,
       clientName: _clientController.text,
       serviceDescription: _serviceController.text,
       value: _valueController.text,

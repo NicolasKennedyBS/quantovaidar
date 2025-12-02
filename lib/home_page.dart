@@ -7,16 +7,20 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-            'Faturaê',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+        title: Image.asset(
+          'assets/images/faturaetransparentname.png',
+          height: 100,
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 3,
         centerTitle: true,
+        iconTheme: IconThemeData(color: Colors.blue[800]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+            icon: const Icon(Icons.settings),
             onPressed: () {
             },
           )
@@ -26,10 +30,12 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.receipt_long_rounded,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+            Opacity(
+              opacity: 0.8,
+              child: SizedBox(
+                width: 250,
+                child: Image.asset('assets/images/faturaelogotransp.png'),
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -54,7 +60,7 @@ class HomePage extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white, // Cor do texto
+                foregroundColor: Colors.white,
                 elevation: 5,
               ),
             ),
