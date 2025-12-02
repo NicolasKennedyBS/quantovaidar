@@ -1,16 +1,51 @@
-# faturae
+<div align="center">
 
-A new Flutter project.
+# 🧾 Faturaê
+### By Nicolas Kennedy
 
-## Getting Started
+**Orçamentos e Recibos Profissionais em 10 segundos.**
 
-This project is a starting point for a Flutter application.
+[![Flutter](https://img.shields.io/badge/Made%20with-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
+[![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev/)
+[![Platform](https://img.shields.io/badge/Platform-Android%20|%20iOS%20|%20Web-brightgreen?style=for-the-badge)](https://flutter.dev/)
 
-A few resources to get you started if this is your first Flutter project:
+</div>
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 📱 Sobre o Projeto
+
+Milhões de prestadores de serviço ainda enviam orçamentos informais via texto no WhatsApp. O Faturaê resolve isso gerando documentos PDF com layout executivo, prontos para envio, diretamente do celular.
+
+
+## 🛠️ Tecnologias Utilizadas
+
+Projeto construído utilizando **Flutter**.
+
+- **Frontend:** Flutter (Material Design 3)
+- **Linguagem:** Dart
+
+## 🔧 Como Rodar Localmente
+
+Certifique-se de ter o [Flutter SDK](https://docs.flutter.dev/get-started/install) instalado.
+
+1. **Clone o repositório**
+   ```bash
+   git clone [https://github.com/SEU-USUARIO/faturae.git](https://github.com/SEU-USUARIO/faturae.git)
+   cd faturae
+   ```
+
+2. **Instale as dependências**
+
+    ```bash
+    flutter pub get
+   ```
+
+3. **Execute o projeto**
+   ```bash
+   # Para rodar no Web (Chrome)
+    flutter run -d chrome
+    
+    # Para rodar no Android (com emulador aberto)
+    flutter run
+   ```
