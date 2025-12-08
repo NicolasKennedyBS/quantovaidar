@@ -89,7 +89,6 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 15),
 
-        // Campo Telefone
         TextField(
           controller: _phoneController,
           decoration: const InputDecoration(

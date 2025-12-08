@@ -15,6 +15,7 @@ class CreateReceiptPage extends StatefulWidget {
 
 class _CreateReceiptPageState extends State<CreateReceiptPage> {
   final _issuerController = TextEditingController();
+  final _pixController = TextEditingController(); // Controlador do Pix
   final _clientController = TextEditingController();
   final _serviceController = TextEditingController();
   final _valueController = TextEditingController();
@@ -26,6 +27,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
 
     if (widget.receiptToEdit != null) {
       _issuerController.text = widget.receiptToEdit!['issuer'];
+      _pixController.text = widget.receiptToEdit!['pix'] ?? ''; // Carrega Pix salvo
       _clientController.text = widget.receiptToEdit!['client'];
       _serviceController.text = widget.receiptToEdit!['service'];
       _valueController.text = widget.receiptToEdit!['value'];
@@ -34,6 +36,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
       _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
       var settingsBox = Hive.box('settings');
       _issuerController.text = settingsBox.get('default_name', defaultValue: '');
+      _pixController.text = settingsBox.get('default_pix', defaultValue: ''); // Carrega Pix padrão
     }
   }
 
@@ -41,10 +44,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            widget.receiptToEdit != null ? "Editar Recibo" : "Novo Recibo",
-            style: const TextStyle(color: Colors.white)
-        ),
+        title: Text(widget.receiptToEdit != null ? "Editar Recibo" : "Novo Recibo", style: const TextStyle(color: Colors.white)),
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -55,18 +55,19 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
           children: [
             Container(
               padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.blue.shade100),
-              ),
-              child: TextField(
-                controller: _issuerController,
-                decoration: const InputDecoration(
-                  labelText: "Quem está emitindo?",
-                  border: InputBorder.none,
-                  icon: Icon(Icons.badge, color: Colors.blue),
-                ),
+              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade100)),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _issuerController,
+                    decoration: const InputDecoration(labelText: "Quem está emitindo?", border: InputBorder.none, icon: Icon(Icons.badge, color: Colors.blue)),
+                  ),
+                  const Divider(),
+                  TextField(
+                    controller: _pixController,
+                    decoration: const InputDecoration(labelText: "Chave Pix (Opcional)", border: InputBorder.none, icon: Icon(Icons.pix, color: Colors.green)),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 30),
@@ -74,26 +75,17 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
             const Text("Dados do Serviço", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
 
-            TextField(
-              controller: _clientController,
-              decoration: const InputDecoration(labelText: "Nome do Cliente", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
-            ),
+            TextField(controller: _clientController, decoration: const InputDecoration(labelText: "Nome do Cliente", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person))),
             const SizedBox(height: 16),
 
-            TextField(
-              controller: _serviceController,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: "Descrição do Serviço", border: OutlineInputBorder(), prefixIcon: Icon(Icons.description)),
-            ),
+            TextField(controller: _serviceController, maxLines: 3, decoration: const InputDecoration(labelText: "Descrição do Serviço", border: OutlineInputBorder(), prefixIcon: Icon(Icons.description))),
             const SizedBox(height: 16),
 
-            Row(
-              children: [
-                Expanded(child: TextField(controller: _valueController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Valor (R\$)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.attach_money)))),
-                const SizedBox(width: 16),
-                Expanded(child: TextField(controller: _dateController, decoration: const InputDecoration(labelText: "Data", border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today)))),
-              ],
-            ),
+            Row(children: [
+              Expanded(child: TextField(controller: _valueController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Valor (R\$)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.attach_money)))),
+              const SizedBox(width: 16),
+              Expanded(child: TextField(controller: _dateController, decoration: const InputDecoration(labelText: "Data", border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today)))),
+            ]),
             const SizedBox(height: 40),
 
             SizedBox(
@@ -101,16 +93,13 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   if (_issuerController.text.isEmpty || _clientController.text.isEmpty || _valueController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha: Seu Nome, Cliente e Valor."), backgroundColor: Colors.red));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha os campos obrigatórios."), backgroundColor: Colors.red));
                     return;
                   }
                   _showModelSelection(context);
                 },
                 icon: const Icon(Icons.check),
-                label: Text(
-                    widget.receiptToEdit != null ? "SALVAR E GERAR PDF" : "GERAR DOCUMENTO",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
-                ),
+                label: Text(widget.receiptToEdit != null ? "SALVAR E GERAR" : "GERAR DOCUMENTO", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white),
               ),
             ),
@@ -183,8 +172,9 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     var box = Hive.box('receipts');
 
     final receiptData = {
-      'id': widget.receiptToEdit != null ? widget.receiptToEdit!['id'] : DateTime.now().millisecondsSinceEpoch.toString(), // Mantém ID se editando
+      'id': widget.receiptToEdit != null ? widget.receiptToEdit!['id'] : DateTime.now().millisecondsSinceEpoch.toString(),
       'issuer': _issuerController.text,
+      'pix': _pixController.text, // Salva o Pix
       'client': _clientController.text,
       'service': _serviceController.text,
       'value': _valueController.text,
@@ -195,18 +185,15 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
 
     if (widget.hiveKey != null) {
       await box.put(widget.hiveKey, receiptData);
-      print("Recibo atualizado!");
     } else {
       await box.add(receiptData);
-      print("Recibo criado!");
     }
 
-    if (mounted && widget.hiveKey != null) {
-      Navigator.pop(context);
-    }
+    if (mounted && widget.hiveKey != null) Navigator.pop(context);
 
     await PdfUtil.generateAndShare(
       issuerName: _issuerController.text,
+      pixKey: _pixController.text,
       clientName: _clientController.text,
       serviceDescription: _serviceController.text,
       value: _valueController.text,

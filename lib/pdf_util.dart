@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'pix_generator.dart';
 
 enum ReceiptStyle {
   simple, modern, tech, premium, minimal,
@@ -15,6 +16,7 @@ class PdfUtil {
 
   static Future<void> generateAndShare({
     required String issuerName,
+    required String pixKey,
     required String clientName,
     required String serviceDescription,
     required String value,
@@ -23,14 +25,38 @@ class PdfUtil {
   }) async {
     final doc = pw.Document();
 
+    // 1. GERAR O CÓDIGO PIX (Se tiver chave e valor válido)
+    String? pixPayload;
+    if (pixKey.isNotEmpty) {
+      try {
+        final cleanValueString = value.replaceAll('R\$', '').replaceAll('.', '').replaceAll(',', '.').trim();
+        final doubleAmount = double.tryParse(cleanValueString) ?? 0.0;
+
+        if (doubleAmount > 0) {
+          final pix = PixGenerator(
+            pixKey: pixKey,
+            merchantName: issuerName,
+            merchantCity: 'SAO PAULO',
+            amount: doubleAmount,
+            txid: 'FATURAE${DateTime.now().millisecondsSinceEpoch.toString().substring(10)}',
+          );
+          pixPayload = pix.getPayload();
+        }
+      } catch (e) {
+        print("Erro ao gerar Pix: $e");
+      }
+    }
+
     doc.addPage(
       pw.Page(
         margin: const pw.EdgeInsets.all(10),
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           switch (style) {
-            case ReceiptStyle.danfe: return _buildDanfeLayout(issuerName, clientName, serviceDescription, value, date);
-            case ReceiptStyle.modern: return _buildModernLayout(issuerName, clientName, serviceDescription, value, date);
+            case ReceiptStyle.danfe: return _buildDanfeLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
+            case ReceiptStyle.modern: return _buildModernLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
+            case ReceiptStyle.simple: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
+          // Os outros modelos ainda não tem Pix, mas funcionam normal
             case ReceiptStyle.tech: return _buildTechLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.premium: return _buildPremiumLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.minimal: return _buildMinimalLayout(issuerName, clientName, serviceDescription, value, date);
@@ -39,7 +65,7 @@ class PdfUtil {
             case ReceiptStyle.health: return _buildHealthLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.retro: return _buildRetroLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.corporate: return _buildCorporateLayout(issuerName, clientName, serviceDescription, value, date);
-            default: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date);
+            default: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
           }
         },
       ),
@@ -59,10 +85,45 @@ class PdfUtil {
     }
   }
 
-  // --- LAYOUTS ---
+  // --- WIDGET HELPER PARA DESENHAR O PIX ---
+  static pw.Widget _buildPixArea(String? payload) {
+    if (payload == null || payload.isEmpty) return pw.Container();
+
+    return pw.Container(
+        margin: const pw.EdgeInsets.only(top: 20),
+        padding: const pw.EdgeInsets.all(10),
+        decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(5)),
+        child: pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
+            children: [
+              pw.BarcodeWidget(
+                data: payload,
+                barcode: pw.Barcode.qrCode(),
+                width: 80,
+                height: 80,
+              ),
+              pw.SizedBox(width: 15),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text("PAGUE VIA PIX", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                  pw.SizedBox(height: 5),
+                  pw.Text("Aponte a câmera do seu banco", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                  pw.SizedBox(height: 5),
+                  pw.Text("Chave:", style: const pw.TextStyle(fontSize: 8)),
+                  pw.Container(
+                    width: 150,
+                    child: pw.Text(payload, maxLines: 2, style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey500)),
+                  )
+                ],
+              )
+            ]
+        )
+    );
+  }
 
   // 1. SIMPLES
-  static pw.Widget _buildSimpleLayout(String issuer, String client, String service, String value, String date) {
+  static pw.Widget _buildSimpleLayout(String issuer, String client, String service, String value, String date, String? pixPayload) {
     return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
       pw.Header(level: 0, child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text("RECIBO", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
@@ -74,6 +135,10 @@ class PdfUtil {
       pw.Text("Cliente: $client", style: const pw.TextStyle(fontSize: 18)),
       pw.SizedBox(height: 10),
       pw.Text("Referente a: $service", style: const pw.TextStyle(fontSize: 18)),
+
+      // PIX AQUI
+      pw.Center(child: _buildPixArea(pixPayload)),
+
       pw.Spacer(),
       pw.Text("Data: $date"),
       pw.SizedBox(height: 20),
@@ -83,7 +148,7 @@ class PdfUtil {
   }
 
   // 2. DANFE
-  static pw.Widget _buildDanfeLayout(String issuer, String client, String service, String value, String date) {
+  static pw.Widget _buildDanfeLayout(String issuer, String client, String service, String value, String date, String? pixPayload) {
     return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
       pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), height: 60, child: pw.Row(children: [
         pw.Expanded(flex: 4, child: _buildBox("RECEBEMOS DE $issuer OS PRODUTOS CONSTANTES DA NOTA INDICADA AO LADO", "", borderRight: true)),
@@ -117,13 +182,16 @@ class PdfUtil {
           pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(value, style: const pw.TextStyle(fontSize: 8))),
         ]),
       ]),
+
+      pw.SizedBox(height: 10),
+      pw.Align(alignment: pw.Alignment.centerRight, child: _buildPixArea(pixPayload)),
+
       pw.Spacer(),
-      pw.Center(child: pw.Text("SEM VALOR FISCAL", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold, color: PdfColors.grey300))),
     ]);
   }
 
   // 3. MODERNO
-  static pw.Widget _buildModernLayout(String issuer, String client, String service, String value, String date) {
+  static pw.Widget _buildModernLayout(String issuer, String client, String service, String value, String date, String? pixPayload) {
     return pw.Column(children: [
       pw.Container(color: PdfColors.blue900, padding: const pw.EdgeInsets.all(20), child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text("RECIBO", style: pw.TextStyle(color: PdfColors.white, fontSize: 24, fontWeight: pw.FontWeight.bold)),
@@ -135,6 +203,10 @@ class PdfUtil {
       _buildRowLabelValue("Cliente", client),
       pw.SizedBox(height: 10),
       _buildRowLabelValue("Serviço", service),
+
+      // PIX AQUI
+      if (pixPayload != null) _buildPixArea(pixPayload),
+
       pw.Spacer(),
       pw.Text(date),
     ]);

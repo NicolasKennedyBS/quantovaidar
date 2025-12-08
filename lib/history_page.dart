@@ -36,9 +36,7 @@ class HistoryPage extends StatelessWidget {
 
             return Dismissible(
               key: ValueKey(key),
-
               direction: DismissDirection.endToStart,
-
               background: Container(
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
@@ -49,12 +47,8 @@ class HistoryPage extends StatelessWidget {
                 ),
                 child: const Icon(Icons.delete, color: Colors.white, size: 30),
               ),
-
               onDismissed: (direction) {
-                // Deleta do Banco de Dados
                 box.delete(key);
-
-                // Mostra aviso com opção de desfazer
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: const Text("Recibo apagado."),
@@ -108,6 +102,7 @@ class HistoryPage extends StatelessWidget {
                         onPressed: () {
                           PdfUtil.generateAndShare(
                             issuerName: receipt['issuer'],
+                            pixKey: receipt['pix'] ?? '',
                             clientName: receipt['client'],
                             serviceDescription: receipt['service'],
                             value: receipt['value'],
