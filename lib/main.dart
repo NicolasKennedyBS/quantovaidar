@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart'; // <--- Importante
 import 'home_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicia o Hive (DATABASE)
+  await Hive.initFlutter();
+
+  // Abre uma tabela para guardar os recibos
+  await Hive.openBox('receipts');
+
   runApp(const FaturaeApp());
 }
 
@@ -15,7 +24,7 @@ class FaturaeApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1),
+          seedColor: const Color(0xFF4C86D9),
           brightness: Brightness.light,
         ),
         useMaterial3: true,

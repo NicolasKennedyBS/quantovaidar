@@ -1,15 +1,19 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 enum ReceiptStyle {
   simple, modern, tech, premium, minimal,
-  construction, creative, health, retro, corporate
+  construction, creative, health, retro, corporate, danfe
 }
 
 class PdfUtil {
 
-  static Future<void> generateAndShowReceipt({
+  static Future<void> generateAndShare({
     required String issuerName,
     required String clientName,
     required String serviceDescription,
@@ -21,9 +25,11 @@ class PdfUtil {
 
     doc.addPage(
       pw.Page(
+        margin: const pw.EdgeInsets.all(10),
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           switch (style) {
+            case ReceiptStyle.danfe: return _buildDanfeLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.modern: return _buildModernLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.tech: return _buildTechLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.premium: return _buildPremiumLayout(issuerName, clientName, serviceDescription, value, date);
@@ -39,293 +45,220 @@ class PdfUtil {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
-      name: 'Recibo_$clientName.pdf',
-    );
+    // LÓGICA DE COMPARTILHAMENTO
+    final bytes = await doc.save();
+    final fileName = 'Recibo_${clientName.replaceAll(" ", "_")}.pdf';
+
+    if (kIsWeb) {
+      await Printing.sharePdf(bytes: bytes, filename: fileName);
+    } else {
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/$fileName");
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles([XFile(file.path)], text: 'Olá $clientName, segue seu documento.');
+    }
   }
 
-  //SIMPLES
+  // --- LAYOUTS ---
+
+  // 1. SIMPLES
   static pw.Widget _buildSimpleLayout(String issuer, String client, String service, String value, String date) {
     return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
       pw.Header(level: 0, child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text("RECIBO", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
-        pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-          pw.Text("Por: $issuer", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-        ])
+        pw.Text("Por: $issuer"),
       ])),
       pw.SizedBox(height: 30),
       pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 30, fontWeight: pw.FontWeight.bold))),
       pw.Divider(),
-      pw.SizedBox(height: 20),
-      pw.Text("Recebemos de: $client", style: const pw.TextStyle(fontSize: 18)),
+      pw.Text("Cliente: $client", style: const pw.TextStyle(fontSize: 18)),
       pw.SizedBox(height: 10),
       pw.Text("Referente a: $service", style: const pw.TextStyle(fontSize: 18)),
       pw.Spacer(),
       pw.Text("Data: $date"),
-      pw.SizedBox(height: 10),
+      pw.SizedBox(height: 20),
       pw.Divider(borderStyle: pw.BorderStyle.dashed),
       pw.Center(child: pw.Text("Assinatura: $issuer")),
     ]);
   }
 
-  // MODERNO
+  // 2. DANFE
+  static pw.Widget _buildDanfeLayout(String issuer, String client, String service, String value, String date) {
+    return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), height: 60, child: pw.Row(children: [
+        pw.Expanded(flex: 4, child: _buildBox("RECEBEMOS DE $issuer OS PRODUTOS CONSTANTES DA NOTA INDICADA AO LADO", "", borderRight: true)),
+        pw.Expanded(flex: 1, child: _buildBox("NF-e", "Nº 000.001\nSÉRIE 1", alignCenter: true)),
+      ])),
+      pw.SizedBox(height: 5),
+      pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), height: 100, child: pw.Row(children: [
+        pw.Expanded(flex: 4, child: pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text(issuer.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+          pw.Text("Natureza da Operação: PRESTAÇÃO DE SERVIÇO", style: const pw.TextStyle(fontSize: 8)),
+        ]))),
+        pw.Expanded(flex: 2, child: _buildBox("DANFE", "Documento Auxiliar\nda Nota Fiscal\nEletrônica", alignCenter: true, borderRight: true, borderLeft: true)),
+      ])),
+      pw.SizedBox(height: 5),
+      pw.Container(color: PdfColors.grey300, padding: const pw.EdgeInsets.all(2), child: pw.Text("DESTINATÁRIO / REMETENTE", style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold))),
+      pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), child: pw.Row(children: [
+        pw.Expanded(flex: 4, child: _buildBox("NOME / RAZÃO SOCIAL", client, borderRight: true)),
+        pw.Expanded(flex: 1, child: _buildBox("DATA DA EMISSÃO", date)),
+      ])),
+      pw.SizedBox(height: 5),
+      pw.Container(color: PdfColors.grey300, padding: const pw.EdgeInsets.all(2), child: pw.Text("DADOS DO PRODUTO / SERVIÇO", style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold))),
+      pw.Table(border: pw.TableBorder.all(width: 0.5), children: [
+        pw.TableRow(decoration: const pw.BoxDecoration(color: PdfColors.grey200), children: [
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("DESCRIÇÃO", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("QTD", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("VL. TOTAL", style: const pw.TextStyle(fontSize: 6))),
+        ]),
+        pw.TableRow(children: [
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(service, style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("1", style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(value, style: const pw.TextStyle(fontSize: 8))),
+        ]),
+      ]),
+      pw.Spacer(),
+      pw.Center(child: pw.Text("SEM VALOR FISCAL", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold, color: PdfColors.grey300))),
+    ]);
+  }
+
+  // 3. MODERNO
   static pw.Widget _buildModernLayout(String issuer, String client, String service, String value, String date) {
     return pw.Column(children: [
-      pw.Container(
-        color: PdfColors.blue900,
-        padding: const pw.EdgeInsets.all(20),
-        child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text("RECIBO", style: pw.TextStyle(color: PdfColors.white, fontSize: 24, fontWeight: pw.FontWeight.bold)),
-          pw.Text("Emitido por: $issuer", style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-        ]),
-      ),
-      pw.SizedBox(height: 40),
-      pw.Container(
-        decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.blue900, width: 2), borderRadius: pw.BorderRadius.circular(10)),
-        padding: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-        child: pw.Column(children: [
-          pw.Text("VALOR TOTAL", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
-          pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-        ]),
-      ),
-      pw.SizedBox(height: 30),
+      pw.Container(color: PdfColors.blue900, padding: const pw.EdgeInsets.all(20), child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+        pw.Text("RECIBO", style: pw.TextStyle(color: PdfColors.white, fontSize: 24, fontWeight: pw.FontWeight.bold)),
+        pw.Text(issuer, style: pw.TextStyle(color: PdfColors.white)),
+      ])),
+      pw.SizedBox(height: 20),
+      pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+      pw.Divider(),
       _buildRowLabelValue("Cliente", client),
       pw.SizedBox(height: 10),
       _buildRowLabelValue("Serviço", service),
       pw.Spacer(),
-      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-        pw.Text(date),
-        pw.Column(children: [
-          pw.Container(width: 150, height: 1, color: PdfColors.blue900),
-          pw.Text(issuer),
-        ])
-      ])
+      pw.Text(date),
     ]);
   }
 
-  // TECH
+  // 4. TECH
   static pw.Widget _buildTechLayout(String issuer, String client, String service, String value, String date) {
     const green = PdfColors.greenAccent;
-    const bg = PdfColors.black;
-    return pw.Container(
-      color: bg,
-      padding: const pw.EdgeInsets.all(20),
-      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text("> SYSTEM.NEW_RECEIPT", style: pw.TextStyle(color: green, font: pw.Font.courier())),
-        pw.Text("> ISSUER: $issuer", style: pw.TextStyle(color: green, font: pw.Font.courier(), fontWeight: pw.FontWeight.bold)),
-        pw.Divider(color: green),
-        pw.SizedBox(height: 20),
-        pw.Text("TO: $client", style: pw.TextStyle(color: green, fontSize: 18, font: pw.Font.courier())),
-        pw.Text("FOR: $service", style: pw.TextStyle(color: green, fontSize: 18, font: pw.Font.courier())),
-        pw.SizedBox(height: 40),
-        pw.Container(
-          decoration: pw.BoxDecoration(border: pw.Border.all(color: green)),
-          padding: const pw.EdgeInsets.all(10),
-          child: pw.Text("R\$ $value", style: pw.TextStyle(color: green, fontSize: 30, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-        ),
-        pw.Spacer(),
-        pw.Text("> DATE: $date", style: pw.TextStyle(color: green, font: pw.Font.courier())),
-        pw.Text("> SIGNED_BY: $issuer", style: pw.TextStyle(color: green, font: pw.Font.courier())),
-      ]),
-    );
-  }
-
-  // PREMIUM
-  static pw.Widget _buildPremiumLayout(String issuer, String client, String service, String value, String date) {
-    final gold = PdfColors.amber700;
-    return pw.Column(children: [
-      pw.Container(
-        alignment: pw.Alignment.center,
-        padding: const pw.EdgeInsets.symmetric(vertical: 20),
-        decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: gold, width: 3))),
-        child: pw.Text("RECIBO - $issuer".toUpperCase(), style: pw.TextStyle(fontSize: 20, color: PdfColors.black, fontWeight: pw.FontWeight.bold)),
-      ),
-      pw.SizedBox(height: 50),
-      pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 50, color: gold, fontWeight: pw.FontWeight.bold)),
-      pw.SizedBox(height: 50),
-      _buildGoldRow("CLIENTE", client, gold),
-      pw.SizedBox(height: 20),
-      _buildGoldRow("SERVIÇO", service, gold),
+    return pw.Container(color: PdfColors.black, padding: const pw.EdgeInsets.all(20), child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.Text("> SYSTEM.RECEIPT", style: pw.TextStyle(color: green, font: pw.Font.courier())),
+      pw.Divider(color: green),
+      pw.Text("FROM: $issuer", style: pw.TextStyle(color: green, font: pw.Font.courier())),
+      pw.Text("TO: $client", style: pw.TextStyle(color: green, font: pw.Font.courier())),
+      pw.Text("VALUE: $value", style: pw.TextStyle(color: green, fontSize: 20, font: pw.Font.courier())),
       pw.Spacer(),
-      pw.Center(child: pw.Text("$date  |  $issuer", style: pw.TextStyle(color: gold, fontWeight: pw.FontWeight.bold))),
-    ]);
-  }
-
-  // MINIMAL
-  static pw.Widget _buildMinimalLayout(String issuer, String client, String service, String value, String date) {
-    return pw.Center(child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
-      pw.Text("Por: $issuer", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey)),
-      pw.SizedBox(height: 20),
-      pw.Text("Recibo.", style: pw.TextStyle(fontSize: 50, fontWeight: pw.FontWeight.bold)),
-      pw.SizedBox(height: 50),
-      pw.Text(client, style: const pw.TextStyle(fontSize: 20)),
-      pw.Text(service, style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey)),
-      pw.SizedBox(height: 40),
-      pw.Divider(indent: 100, endIndent: 100),
-      pw.SizedBox(height: 40),
-      pw.Text("R\$ $value", style: const pw.TextStyle(fontSize: 24)),
-      pw.SizedBox(height: 100),
-      pw.Text(date, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+      pw.Text(date, style: pw.TextStyle(color: green, font: pw.Font.courier())),
     ]));
   }
 
-  // CONSTRUCTION
+  // 5. PREMIUM
+  static pw.Widget _buildPremiumLayout(String issuer, String client, String service, String value, String date) {
+    final gold = PdfColors.amber700;
+    return pw.Column(children: [
+      pw.Container(decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: gold, width: 3))), child: pw.Text("RECIBO PREMIUM", style: pw.TextStyle(fontSize: 20, color: gold))),
+      pw.SizedBox(height: 20),
+      pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 40, color: gold)),
+      pw.SizedBox(height: 20),
+      _buildGoldRow("CLIENTE", client, gold),
+      _buildGoldRow("EMISSOR", issuer, gold),
+      pw.Spacer(),
+      pw.Text(date, style: pw.TextStyle(color: gold)),
+    ]);
+  }
+
+  // 6. MINIMAL
+  static pw.Widget _buildMinimalLayout(String issuer, String client, String service, String value, String date) {
+    return pw.Center(child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
+      pw.Text(issuer, style: const pw.TextStyle(color: PdfColors.grey)),
+      pw.SizedBox(height: 20),
+      pw.Text("R\$ $value", style: const pw.TextStyle(fontSize: 30)),
+      pw.SizedBox(height: 20),
+      pw.Text(client),
+      pw.Text(service),
+      pw.SizedBox(height: 50),
+      pw.Text(date, style: const pw.TextStyle(fontSize: 10)),
+    ]));
+  }
+
+  // 7. CONSTRUCTION
   static pw.Widget _buildConstructionLayout(String issuer, String client, String service, String value, String date) {
     return pw.Column(children: [
-      pw.Container(height: 20, width: double.infinity, color: PdfColors.orange),
-      pw.SizedBox(height: 30),
-      pw.Text("ORDEM DE SERVIÇO", style: pw.TextStyle(fontSize: 30, fontWeight: pw.FontWeight.bold)),
-      pw.Text("Responsável: $issuer", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-      pw.SizedBox(height: 40),
-      pw.Table(border: pw.TableBorder.all(width: 2), children: [
-        pw.TableRow(children: [
-          pw.Padding(padding: const pw.EdgeInsets.all(10), child: pw.Text("CLIENTE", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-          pw.Padding(padding: const pw.EdgeInsets.all(10), child: pw.Text(client)),
-        ]),
-        pw.TableRow(children: [
-          pw.Padding(padding: const pw.EdgeInsets.all(10), child: pw.Text("SERVIÇO", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-          pw.Padding(padding: const pw.EdgeInsets.all(10), child: pw.Text(service)),
-        ]),
-        pw.TableRow(children: [
-          pw.Padding(padding: const pw.EdgeInsets.all(10), child: pw.Text("VALOR", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.orange800))),
-          pw.Padding(padding: const pw.EdgeInsets.all(10), child: pw.Text("R\$ $value", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16))),
-        ]),
-      ]),
+      pw.Container(height: 20, color: PdfColors.orange),
+      pw.Text("OBRAS & SERVIÇOS", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+      pw.Divider(),
+      _buildRowLabelValue("Cliente", client),
+      _buildRowLabelValue("Valor", "R\$ $value"),
       pw.Spacer(),
-      pw.Container(height: 2, width: 200, color: PdfColors.black),
-      pw.Text("ASSINATURA: $issuer"),
-      pw.SizedBox(height: 20),
-      pw.Container(height: 20, width: double.infinity, color: PdfColors.orange),
+      pw.Container(height: 20, color: PdfColors.black),
     ]);
   }
 
-  // CREATIVE
+  // 8. CREATIVE
   static pw.Widget _buildCreativeLayout(String issuer, String client, String service, String value, String date) {
-    const purple = PdfColors.purple600;
-    return pw.Stack(children: [
-      pw.Container(decoration: pw.BoxDecoration(color: purple, borderRadius: pw.BorderRadius.circular(20)), height: 200, width: double.infinity),
-      pw.Padding(padding: const pw.EdgeInsets.all(20), child: pw.Column(children: [
-        pw.Text("Pagamento Confirmado", style: pw.TextStyle(color: PdfColors.white, fontSize: 18)),
-        pw.Text(issuer, style: pw.TextStyle(color: PdfColors.white, fontSize: 12, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 40),
-        pw.Container(
-          decoration: pw.BoxDecoration(color: PdfColors.white, borderRadius: pw.BorderRadius.circular(10), boxShadow: const [pw.BoxShadow(blurRadius: 10, color: PdfColors.grey300)]),
-          padding: const pw.EdgeInsets.all(30),
-          child: pw.Column(children: [
-            pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 40, color: purple, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 20),
-            pw.Divider(),
-            pw.SizedBox(height: 20),
-            _buildRowLabelValue("Quem pagou", client),
-            pw.SizedBox(height: 15),
-            _buildRowLabelValue("Pelo que", service),
-            pw.SizedBox(height: 15),
-            _buildRowLabelValue("Quando", date),
-          ]),
-        ),
-      ]))
-    ]);
-  }
-
-  // HEALTH
-  static pw.Widget _buildHealthLayout(String issuer, String client, String service, String value, String date) {
-    const teal = PdfColors.teal;
-    return pw.Column(children: [
-      pw.Row(children: [
-        pw.Container(width: 10, height: 10, color: teal),
-        pw.SizedBox(width: 5),
-        pw.Text(issuer, style: pw.TextStyle(color: teal, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-      ]),
-      pw.SizedBox(height: 40),
-      pw.Container(width: double.infinity, padding: const pw.EdgeInsets.all(20), color: PdfColors.teal50, child: pw.Text("R\$ $value", style: pw.TextStyle(color: teal, fontSize: 35, fontWeight: pw.FontWeight.bold))),
-      pw.SizedBox(height: 40),
-      pw.Text(client, style: pw.TextStyle(fontSize: 22)),
-      pw.Text(service, style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey)),
+    return pw.Container(color: PdfColors.purple100, padding: const pw.EdgeInsets.all(20), child: pw.Column(children: [
+      pw.Text("Uhull! Pagamento Recebido!", style: pw.TextStyle(color: PdfColors.purple, fontSize: 20)),
+      pw.SizedBox(height: 20),
+      pw.Container(color: PdfColors.white, padding: const pw.EdgeInsets.all(20), child: pw.Column(children: [
+        pw.Text("R\$ $value", style: pw.TextStyle(fontSize: 30, color: PdfColors.purple)),
+        pw.Text(client),
+      ])),
       pw.Spacer(),
-      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.end, children: [
-        pw.Container(width: 2, height: 40, color: teal),
-        pw.SizedBox(width: 10),
-        pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text(date),
-          pw.Text("Profissional: $issuer"),
-        ])
-      ])
+      pw.Text(issuer),
+    ]));
+  }
+
+  // 9. HEALTH
+  static pw.Widget _buildHealthLayout(String issuer, String client, String service, String value, String date) {
+    return pw.Column(children: [
+      pw.Text(issuer, style: pw.TextStyle(color: PdfColors.teal, fontSize: 20)),
+      pw.Divider(color: PdfColors.teal),
+      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+        pw.Text("Paciente: $client"),
+        pw.Text("R\$ $value", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+      ]),
+      pw.Spacer(),
+      pw.Text(date),
     ]);
   }
 
-  // RETRO
+  // 10. RETRO
   static pw.Widget _buildRetroLayout(String issuer, String client, String service, String value, String date) {
-    return pw.Container(
-      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.brown, style: pw.BorderStyle.dashed)),
-      padding: const pw.EdgeInsets.all(30),
-      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Center(child: pw.Text("NOTA DE SERVICO", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 24, fontWeight: pw.FontWeight.bold))),
-        pw.SizedBox(height: 10),
-        pw.Divider(borderStyle: pw.BorderStyle.dotted),
-        pw.SizedBox(height: 20),
-        pw.Text("EMITENTE......: $issuer", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 16)),
-        pw.Text("CLIENTE.......: $client", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 16)),
-        pw.Text("ITEM..........: $service", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 16)),
-        pw.Text("DATA..........: $date", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 16)),
-        pw.SizedBox(height: 40),
-        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text("TOTAL LIQUIDO:", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 16)),
-          pw.Text("R\$ $value", style: pw.TextStyle(font: pw.Font.courier(), fontSize: 24, fontWeight: pw.FontWeight.bold)),
-        ]),
-        pw.SizedBox(height: 40),
-        pw.Divider(borderStyle: pw.BorderStyle.dotted),
-      ]),
-    );
+    return pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all(style: pw.BorderStyle.dashed)), padding: const pw.EdgeInsets.all(20), child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.Text("NOTA FISCAL", style: pw.TextStyle(font: pw.Font.courier())),
+      pw.Divider(borderStyle: pw.BorderStyle.dotted),
+      pw.Text("CLIENTE: $client", style: pw.TextStyle(font: pw.Font.courier())),
+      pw.Text("TOTAL: R\$ $value", style: pw.TextStyle(font: pw.Font.courier())),
+      pw.Spacer(),
+      pw.Text(date, style: pw.TextStyle(font: pw.Font.courier())),
+    ]));
   }
 
-  // CORPORATE
+  // 11. CORPORATE
   static pw.Widget _buildCorporateLayout(String issuer, String client, String service, String value, String date) {
     return pw.Column(children: [
       pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-        pw.Text("RECIBO", style: pw.TextStyle(fontSize: 30, color: PdfColors.red900, fontWeight: pw.FontWeight.bold)),
-        pw.Text(issuer, style: const pw.TextStyle(color: PdfColors.grey)),
+        pw.Text("INVOICE", style: pw.TextStyle(color: PdfColors.red900, fontSize: 24)),
+        pw.Text(issuer),
       ]),
-      pw.Divider(color: PdfColors.red900, thickness: 2),
-      pw.SizedBox(height: 20),
-      pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text("PARA:", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-          pw.Text(client, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-        ])),
-        pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text("DATA:", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-          pw.Text(date, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-        ])),
-      ]),
-      pw.SizedBox(height: 30),
-      pw.Table.fromTextArray(
-        headers: ['Descrição', 'Preço'],
-        data: [[service, 'R\$ $value']],
-        headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-        headerDecoration: const pw.BoxDecoration(color: PdfColors.red900),
-      ),
+      pw.Divider(color: PdfColors.red900),
+      _buildRowLabelValue("Bill To", client),
+      _buildRowLabelValue("Total", "R\$ $value"),
       pw.Spacer(),
-      pw.Text("Emitido por $issuer", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+      pw.Text(date),
     ]);
   }
 
-  // HELPERS
+  // Helpers
+  static pw.Widget _buildBox(String label, String value, {bool borderRight = false, bool borderLeft = false, bool alignCenter = false}) {
+    return pw.Container(padding: const pw.EdgeInsets.all(3), decoration: pw.BoxDecoration(border: pw.Border(right: borderRight ? const pw.BorderSide() : pw.BorderSide.none, left: borderLeft ? const pw.BorderSide() : pw.BorderSide.none)), child: pw.Column(crossAxisAlignment: alignCenter ? pw.CrossAxisAlignment.center : pw.CrossAxisAlignment.start, children: [pw.Text(label, style: const pw.TextStyle(fontSize: 5)), pw.Text(value, style: const pw.TextStyle(fontSize: 8))]));
+  }
   static pw.Widget _buildRowLabelValue(String label, String value) {
-    return pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-      pw.Text(label, style: const pw.TextStyle(color: PdfColors.grey600)),
-      pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-    ]);
+    return pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text(label), pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))]);
   }
-
   static pw.Widget _buildGoldRow(String label, String value, PdfColor color) {
-    return pw.Row(children: [
-      pw.Container(width: 5, height: 50, color: color),
-      pw.SizedBox(width: 10),
-      pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text(label, style: pw.TextStyle(fontSize: 10, color: color)),
-        pw.Text(value, style: pw.TextStyle(fontSize: 18)),
-      ])
-    ]);
+    return pw.Row(children: [pw.Container(width: 5, height: 20, color: color), pw.SizedBox(width: 5), pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [pw.Text(label, style: pw.TextStyle(fontSize: 8, color: color)), pw.Text(value)])]);
   }
 }

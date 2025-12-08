@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'pdf_util.dart';
 
 class CreateReceiptPage extends StatefulWidget {
@@ -119,6 +120,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
               Expanded(
                 child: ListView(
                   children: [
+                    _buildModelOption(context, "DANFE (Nota Fiscal)", "Estilo documento oficial", Icons.receipt_long, Colors.blueGrey, ReceiptStyle.danfe),
                     _buildModelOption(context, "Simples", "Econômico, ideal para P&B", Icons.description_outlined, Colors.grey, ReceiptStyle.simple),
                     _buildModelOption(context, "Executivo", "Azul Profissional", Icons.business, Colors.blue[800]!, ReceiptStyle.modern),
                     _buildModelOption(context, "Tech Dev", "Hacker", Icons.terminal, Colors.green, ReceiptStyle.tech),
@@ -157,8 +159,27 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     );
   }
 
-  void _generatePdf(ReceiptStyle style) {
-    PdfUtil.generateAndShowReceipt(
+  // -- Função Atualizada com Hive e Share --
+  void _generatePdf(ReceiptStyle style) async {
+
+    var box = Hive.box('receipts');
+
+    final receiptData = {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'issuer': _issuerController.text,
+      'client': _clientController.text,
+      'service': _serviceController.text,
+      'value': _valueController.text,
+      'date': _dateController.text,
+      'style': style.index,
+      'createdAt': DateTime.now().toString(),
+    };
+
+    await box.add(receiptData);
+    print("Salvo no histórico! Total: ${box.length}");
+
+
+    await PdfUtil.generateAndShare(
       issuerName: _issuerController.text,
       clientName: _clientController.text,
       serviceDescription: _serviceController.text,
