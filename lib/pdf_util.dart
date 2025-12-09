@@ -220,7 +220,7 @@ class PdfUtil {
     return pw.Center(child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
       pw.Text(a[0].toString().toUpperCase(), style: const pw.TextStyle(letterSpacing: 2, fontSize: 10)),
       pw.SizedBox(height: 40),
-      pw.Text("R\$ ${a[3]}", style: const pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
+      pw.Text("R\$ ${a[3]}", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
       pw.SizedBox(height: 10),
       pw.Text("Pago por ${a[1]}", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
       pw.SizedBox(height: 40),
@@ -377,7 +377,7 @@ class PdfUtil {
       ]),
       if (a[5] != null) pw.Align(alignment: pw.Alignment.centerLeft, child: _buildPixArea(a[5])),
       pw.Spacer(),
-      pw.Center(child: pw.Text("Obrigado pela preferência", style: const pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 10))),
+      pw.Center(child: pw.Text("Obrigado pela preferência", style: pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 10))),
     ]);
   }
 
