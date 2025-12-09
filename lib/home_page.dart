@@ -18,7 +18,6 @@ class _HomePageState extends State<HomePage> {
     const HistoryPage(),
     const HomeContent(),
     const SettingsPage(),
-    const Center(child: Text("Configurações em breve...")),
   ];
 
   void _onItemTapped(int index) {
@@ -32,10 +31,14 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
 
-
       appBar: _selectedIndex == 1
           ? AppBar(
-        title: Image.asset('assets/images/faturaetransparentname.png', height: 55),
+        toolbarHeight: 50,
+        title: Image.asset(
+          'assets/images/faturaetransparentname.png',
+          height: 100,
+          fit: BoxFit.contain,
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -53,7 +56,6 @@ class _HomePageState extends State<HomePage> {
 
       body: _pages[_selectedIndex],
 
-      // DOCK INFERIOR
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,

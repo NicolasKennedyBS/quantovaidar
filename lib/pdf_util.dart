@@ -22,16 +22,18 @@ class PdfUtil {
     required String value,
     required String date,
     required ReceiptStyle style,
+    bool isProduct = false,
+    String qty = '1',
+    String unitPrice = '',
   }) async {
     final doc = pw.Document();
 
-    // 1. GERAR O CÓDIGO PIX (Se tiver chave e valor válido)
+    // Gera Pix
     String? pixPayload;
     if (pixKey.isNotEmpty) {
       try {
         final cleanValueString = value.replaceAll('R\$', '').replaceAll('.', '').replaceAll(',', '.').trim();
         final doubleAmount = double.tryParse(cleanValueString) ?? 0.0;
-
         if (doubleAmount > 0) {
           final pix = PixGenerator(
             pixKey: pixKey,
@@ -42,9 +44,7 @@ class PdfUtil {
           );
           pixPayload = pix.getPayload();
         }
-      } catch (e) {
-        print("Erro ao gerar Pix: $e");
-      }
+      } catch (e) { print("Erro Pix: $e"); }
     }
 
     doc.addPage(
@@ -53,10 +53,9 @@ class PdfUtil {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           switch (style) {
-            case ReceiptStyle.danfe: return _buildDanfeLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
-            case ReceiptStyle.modern: return _buildModernLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
-            case ReceiptStyle.simple: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
-          // Os outros modelos ainda não tem Pix, mas funcionam normal
+            case ReceiptStyle.danfe: return _buildDanfeLayout(issuerName, clientName, serviceDescription, value, date, pixPayload, isProduct, qty, unitPrice);
+            case ReceiptStyle.modern: return _buildModernLayout(issuerName, clientName, serviceDescription, value, date, pixPayload, isProduct);
+            case ReceiptStyle.simple: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date, pixPayload, isProduct);
             case ReceiptStyle.tech: return _buildTechLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.premium: return _buildPremiumLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.minimal: return _buildMinimalLayout(issuerName, clientName, serviceDescription, value, date);
@@ -65,13 +64,12 @@ class PdfUtil {
             case ReceiptStyle.health: return _buildHealthLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.retro: return _buildRetroLayout(issuerName, clientName, serviceDescription, value, date);
             case ReceiptStyle.corporate: return _buildCorporateLayout(issuerName, clientName, serviceDescription, value, date);
-            default: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date, pixPayload);
+            default: return _buildSimpleLayout(issuerName, clientName, serviceDescription, value, date, pixPayload, isProduct);
           }
         },
       ),
     );
 
-    // LÓGICA DE COMPARTILHAMENTO
     final bytes = await doc.save();
     final fileName = 'Recibo_${clientName.replaceAll(" ", "_")}.pdf';
 
@@ -85,45 +83,8 @@ class PdfUtil {
     }
   }
 
-  // --- WIDGET HELPER PARA DESENHAR O PIX ---
-  static pw.Widget _buildPixArea(String? payload) {
-    if (payload == null || payload.isEmpty) return pw.Container();
-
-    return pw.Container(
-        margin: const pw.EdgeInsets.only(top: 20),
-        padding: const pw.EdgeInsets.all(10),
-        decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(5)),
-        child: pw.Row(
-            mainAxisSize: pw.MainAxisSize.min,
-            children: [
-              pw.BarcodeWidget(
-                data: payload,
-                barcode: pw.Barcode.qrCode(),
-                width: 80,
-                height: 80,
-              ),
-              pw.SizedBox(width: 15),
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text("PAGUE VIA PIX", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
-                  pw.SizedBox(height: 5),
-                  pw.Text("Aponte a câmera do seu banco", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                  pw.SizedBox(height: 5),
-                  pw.Text("Chave:", style: const pw.TextStyle(fontSize: 8)),
-                  pw.Container(
-                    width: 150,
-                    child: pw.Text(payload, maxLines: 2, style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey500)),
-                  )
-                ],
-              )
-            ]
-        )
-    );
-  }
-
-  // 1. SIMPLES
-  static pw.Widget _buildSimpleLayout(String issuer, String client, String service, String value, String date, String? pixPayload) {
+  //  1. LAYOUT SIMPLES (Adaptável)
+  static pw.Widget _buildSimpleLayout(String issuer, String client, String desc, String value, String date, String? pix, bool isProduct) {
     return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
       pw.Header(level: 0, child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text("RECIBO", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold)),
@@ -134,64 +95,104 @@ class PdfUtil {
       pw.Divider(),
       pw.Text("Cliente: $client", style: const pw.TextStyle(fontSize: 18)),
       pw.SizedBox(height: 10),
-      pw.Text("Referente a: $service", style: const pw.TextStyle(fontSize: 18)),
 
-      // PIX AQUI
-      pw.Center(child: _buildPixArea(pixPayload)),
+      pw.Text(isProduct ? "Referente à compra de:" : "Referente ao serviço:", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+      pw.Text(desc, style: const pw.TextStyle(fontSize: 18)),
 
+      pw.Center(child: _buildPixArea(pix)),
       pw.Spacer(),
       pw.Text("Data: $date"),
-      pw.SizedBox(height: 20),
       pw.Divider(borderStyle: pw.BorderStyle.dashed),
       pw.Center(child: pw.Text("Assinatura: $issuer")),
     ]);
   }
 
-  // 2. DANFE
-  static pw.Widget _buildDanfeLayout(String issuer, String client, String service, String value, String date, String? pixPayload) {
+
+  //  2. LAYOUT DANFE
+
+  static pw.Widget _buildDanfeLayout(String issuer, String client, String desc, String value, String date, String? pix, bool isProduct, String qty, String unitPrice) {
+
+    final String operationType = isProduct ? "VENDA DE MERCADORIA" : "PRESTAÇÃO DE SERVIÇO";
+
     return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      // Topo
       pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), height: 60, child: pw.Row(children: [
-        pw.Expanded(flex: 4, child: _buildBox("RECEBEMOS DE $issuer OS PRODUTOS CONSTANTES DA NOTA INDICADA AO LADO", "", borderRight: true)),
-        pw.Expanded(flex: 1, child: _buildBox("NF-e", "Nº 000.001\nSÉRIE 1", alignCenter: true)),
+        pw.Expanded(flex: 4, child: _buildBox("RECEBEMOS DE $issuer OS PRODUTOS/SERVIÇOS CONSTANTES DA NOTA", "", borderRight: true)),
+        pw.Expanded(flex: 1, child: _buildBox("NF-e", "Nº 000.001", alignCenter: true)),
       ])),
       pw.SizedBox(height: 5),
-      pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), height: 100, child: pw.Row(children: [
+
+      pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), height: 90, child: pw.Row(children: [
         pw.Expanded(flex: 4, child: pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           pw.Text(issuer.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-          pw.Text("Natureza da Operação: PRESTAÇÃO DE SERVIÇO", style: const pw.TextStyle(fontSize: 8)),
+          pw.Spacer(),
+          pw.Text("Natureza da Operação:", style: const pw.TextStyle(fontSize: 6)),
+          pw.Text(operationType, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
         ]))),
         pw.Expanded(flex: 2, child: _buildBox("DANFE", "Documento Auxiliar\nda Nota Fiscal\nEletrônica", alignCenter: true, borderRight: true, borderLeft: true)),
       ])),
       pw.SizedBox(height: 5),
-      pw.Container(color: PdfColors.grey300, padding: const pw.EdgeInsets.all(2), child: pw.Text("DESTINATÁRIO / REMETENTE", style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold))),
+
       pw.Container(decoration: pw.BoxDecoration(border: pw.Border.all()), child: pw.Row(children: [
         pw.Expanded(flex: 4, child: _buildBox("NOME / RAZÃO SOCIAL", client, borderRight: true)),
         pw.Expanded(flex: 1, child: _buildBox("DATA DA EMISSÃO", date)),
       ])),
       pw.SizedBox(height: 5),
-      pw.Container(color: PdfColors.grey300, padding: const pw.EdgeInsets.all(2), child: pw.Text("DADOS DO PRODUTO / SERVIÇO", style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold))),
-      pw.Table(border: pw.TableBorder.all(width: 0.5), children: [
-        pw.TableRow(decoration: const pw.BoxDecoration(color: PdfColors.grey200), children: [
-          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("DESCRIÇÃO", style: const pw.TextStyle(fontSize: 6))),
-          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("QTD", style: const pw.TextStyle(fontSize: 6))),
-          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("VL. TOTAL", style: const pw.TextStyle(fontSize: 6))),
-        ]),
-        pw.TableRow(children: [
-          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(service, style: const pw.TextStyle(fontSize: 8))),
-          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("1", style: const pw.TextStyle(fontSize: 8))),
-          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(value, style: const pw.TextStyle(fontSize: 8))),
-        ]),
-      ]),
+
+      if (isProduct)
+        _buildProductTable(desc, qty, unitPrice, value)
+      else
+        _buildServiceTable(desc, value),
 
       pw.SizedBox(height: 10),
-      pw.Align(alignment: pw.Alignment.centerRight, child: _buildPixArea(pixPayload)),
-
+      pw.Align(alignment: pw.Alignment.centerRight, child: _buildPixArea(pix)),
       pw.Spacer(),
+      pw.Center(child: pw.Text("SEM VALOR FISCAL", style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold, color: PdfColors.grey300))),
     ]);
   }
 
-  // 3. MODERNO
-  static pw.Widget _buildModernLayout(String issuer, String client, String service, String value, String date, String? pixPayload) {
+  // TABELA DE PRODUTOS
+  static pw.Widget _buildProductTable(String desc, String qty, String unitPrice, String total) {
+    return pw.Column(children: [
+      pw.Container(color: PdfColors.grey300, padding: const pw.EdgeInsets.all(2), child: pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Text("DADOS DO PRODUTO", style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)))),
+      pw.Table(border: pw.TableBorder.all(width: 0.5), children: [
+        pw.TableRow(decoration: const pw.BoxDecoration(color: PdfColors.grey200), children: [
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("DESCRIÇÃO", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("UNID", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("QTD", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("VL. UNIT", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("VL. TOTAL", style: const pw.TextStyle(fontSize: 6))),
+        ]),
+        pw.TableRow(children: [
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(desc, style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("UN", style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(qty, style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("R\$ $unitPrice", style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("R\$ $total", style: const pw.TextStyle(fontSize: 8))),
+        ]),
+      ])
+    ]);
+  }
+
+  // TABELA DE SERVIÇOS
+  static pw.Widget _buildServiceTable(String desc, String total) {
+    return pw.Column(children: [
+      pw.Container(color: PdfColors.grey300, padding: const pw.EdgeInsets.all(2), child: pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Text("DADOS DO SERVIÇO", style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)))),
+      pw.Table(border: pw.TableBorder.all(width: 0.5), columnWidths: {0: const pw.FlexColumnWidth(4), 1: const pw.FlexColumnWidth(1)}, children: [
+        pw.TableRow(decoration: const pw.BoxDecoration(color: PdfColors.grey200), children: [
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("DESCRIÇÃO DO SERVIÇO", style: const pw.TextStyle(fontSize: 6))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("VALOR TOTAL", style: const pw.TextStyle(fontSize: 6))),
+        ]),
+        pw.TableRow(children: [
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text(desc, style: const pw.TextStyle(fontSize: 8))),
+          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text("R\$ $total", style: const pw.TextStyle(fontSize: 8))),
+        ]),
+      ])
+    ]);
+  }
+
+  //  3. LAYOUT MODERNO
+  static pw.Widget _buildModernLayout(String issuer, String client, String desc, String value, String date, String? pix, bool isProduct) {
     return pw.Column(children: [
       pw.Container(color: PdfColors.blue900, padding: const pw.EdgeInsets.all(20), child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text("RECIBO", style: pw.TextStyle(color: PdfColors.white, fontSize: 24, fontWeight: pw.FontWeight.bold)),
@@ -202,11 +203,9 @@ class PdfUtil {
       pw.Divider(),
       _buildRowLabelValue("Cliente", client),
       pw.SizedBox(height: 10),
-      _buildRowLabelValue("Serviço", service),
+      _buildRowLabelValue(isProduct ? "Produto" : "Serviço", desc),
 
-      // PIX AQUI
-      if (pixPayload != null) _buildPixArea(pixPayload),
-
+      if (pix != null) _buildPixArea(pix),
       pw.Spacer(),
       pw.Text(date),
     ]);
@@ -323,7 +322,24 @@ class PdfUtil {
     ]);
   }
 
-  // Helpers
+  static pw.Widget _buildPixArea(String? payload) {
+    if (payload == null || payload.isEmpty) return pw.Container();
+    return pw.Container(
+        margin: const pw.EdgeInsets.only(top: 20),
+        padding: const pw.EdgeInsets.all(10),
+        decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(5)),
+        child: pw.Row(mainAxisSize: pw.MainAxisSize.min, children: [
+          pw.BarcodeWidget(data: payload, barcode: pw.Barcode.qrCode(), width: 80, height: 80),
+          pw.SizedBox(width: 15),
+          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Text("PAGUE VIA PIX", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+            pw.Text("Chave:", style: const pw.TextStyle(fontSize: 8)),
+            pw.Container(width: 150, child: pw.Text(payload, maxLines: 2, style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey500)))
+          ])
+        ])
+    );
+  }
+
   static pw.Widget _buildBox(String label, String value, {bool borderRight = false, bool borderLeft = false, bool alignCenter = false}) {
     return pw.Container(padding: const pw.EdgeInsets.all(3), decoration: pw.BoxDecoration(border: pw.Border(right: borderRight ? const pw.BorderSide() : pw.BorderSide.none, left: borderLeft ? const pw.BorderSide() : pw.BorderSide.none)), child: pw.Column(crossAxisAlignment: alignCenter ? pw.CrossAxisAlignment.center : pw.CrossAxisAlignment.start, children: [pw.Text(label, style: const pw.TextStyle(fontSize: 5)), pw.Text(value, style: const pw.TextStyle(fontSize: 8))]));
   }

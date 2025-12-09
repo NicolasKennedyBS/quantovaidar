@@ -1,5 +1,3 @@
-// lib/pix_generator.dart
-
 class PixGenerator {
   final String pixKey;
   final String? merchantName;
@@ -18,30 +16,18 @@ class PixGenerator {
   String getPayload() {
     final payload = StringBuffer();
 
-    // Payload Format Indicator
     payload.write(_getValue('00', '01'));
-    // Merchant Account Information
     payload.write(_getValue('26', _getMerchantAccountInformation()));
-    // Merchant Category Code
     payload.write(_getValue('52', '0000'));
-    // Transaction Currency (BRL)
     payload.write(_getValue('53', '986'));
-    // Transaction Amount
     if (amount != null && amount! > 0) {
       payload.write(_getValue('54', amount!.toStringAsFixed(2)));
     }
-    // Country Code
     payload.write(_getValue('58', 'BR'));
-    // Merchant Name
     payload.write(_getValue('59', _formatString(merchantName ?? 'Nao Informado', 25)));
-    // Merchant City
     payload.write(_getValue('60', _formatString(merchantCity ?? 'SAO PAULO', 15)));
-    // Additional Data Field Template (TXID)
     payload.write(_getValue('62', _getAdditionalDataFieldTemplate()));
-    // CRC16
     payload.write('6304');
-
-    // Calcular CRC16
     final crc = _getCRC16(payload.toString());
     return '${payload.toString()}$crc';
   }
@@ -53,7 +39,7 @@ class PixGenerator {
   }
 
   String _getAdditionalDataFieldTemplate() {
-    final txidVal = txid ?? '***'; // *** indica pagamento livre/geral
+    final txidVal = txid ?? '***';
     return _getValue('05', txidVal);
   }
 

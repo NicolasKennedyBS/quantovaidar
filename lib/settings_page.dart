@@ -23,7 +23,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _phoneController.text = settingsBox.get('default_phone', defaultValue: '');
   }
 
-  // Função para salvar tudo
   void _saveSettings() {
     settingsBox.put('default_name', _nameController.text);
     settingsBox.put('default_pix', _pixController.text);
@@ -34,7 +33,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // Função para limpar histórico
   void _clearHistory() {
     showDialog(
       context: context,
@@ -45,7 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
           TextButton(
             onPressed: () {
-              Hive.box('receipts').clear(); // Limpa a caixa de recibos
+              Hive.box('receipts').clear();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Histórico limpo.")));
             },
@@ -68,7 +66,6 @@ class _SettingsPageState extends State<SettingsPage> {
         const Text("Preencha aqui para não precisar digitar em todo recibo."),
         const SizedBox(height: 20),
 
-        // Campo Nome/Empresa
         TextField(
           controller: _nameController,
           decoration: const InputDecoration(
@@ -99,7 +96,6 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 20),
 
-        // Botão Salvar
         SizedBox(
           height: 50,
           child: ElevatedButton.icon(
