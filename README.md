@@ -15,7 +15,7 @@
 
 ## 📱 Sobre o Projeto
 
-Milhões de prestadores de serviço ainda enviam orçamentos informais via texto no WhatsApp. O Faturaê resolve isso gerando documentos PDF com layout executivo, prontos para envio, diretamente do celular.
+Milhões de prestadores de serviço ainda enviam orçamentos informais via texto no WhatsApp. O QuantoVaiDar? resolve isso gerando documentos PDF com layout executivo, prontos para envio, diretamente do celular.
 
 
 ## 🛠️ Tecnologias Utilizadas
