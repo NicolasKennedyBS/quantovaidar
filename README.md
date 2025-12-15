@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧾 Faturaê
+# 🧾 Quanto Vai Dar?
 ### By Nicolas Kennedy
 
 **Orçamentos e Recibos Profissionais em 10 segundos.**
