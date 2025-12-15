@@ -33,8 +33,8 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         toolbarHeight: 85,
         title: Image.asset(
-          'assets/images/faturaetransparentname.png',
-          height: 110,
+          'assets/images/quantovaidartittle.png',
+          height: 70,
           fit: BoxFit.contain,
           color: isDark ? Colors.white : null,
         ),

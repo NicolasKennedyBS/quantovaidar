@@ -29,7 +29,7 @@ class FaturaeApp extends StatelessWidget {
         final isDark = box.get('isDarkMode', defaultValue: initialDarkMode);
 
         return MaterialApp(
-          title: 'Faturaê',
+          title: 'QuantoVaiDar?',
           debugShowCheckedModeBanner: false,
 
           locale: const Locale('pt', 'BR'),
