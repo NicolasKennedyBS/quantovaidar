@@ -110,7 +110,6 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
     final inputColor = isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF5F7FA);
-    final borderColor = isDark ? Colors.transparent : const Color(0xFFE0E0E0);
     final primaryColor = const Color(0xFF4C86D9);
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = Colors.grey[500]!;
@@ -130,157 +129,161 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: inputColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(child: _buildModernSegmentButton("SERVIÇO", !_isProduct, primaryColor, textColor)),
-                  Expanded(child: _buildModernSegmentButton("PRODUTO / VENDA", _isProduct, primaryColor, textColor)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            _buildSectionTitle("DADOS DO EMISSOR"),
-            _buildModernInput(
-              controller: _issuerController,
-              label: "Quem está emitindo?",
-              icon: Icons.store_rounded,
-              fillColor: inputColor,
-              hintColor: hintColor,
-            ),
-            const SizedBox(height: 12),
-            _buildModernInput(
-              controller: _pixController,
-              label: "Chave Pix (Opcional)",
-              icon: Icons.pix_rounded,
-              fillColor: inputColor,
-              hintColor: hintColor,
-            ),
-
-            const SizedBox(height: 32),
-
-            _buildSectionTitle("DADOS DO CLIENTE"),
-            _buildModernInput(
-              controller: _clientController,
-              label: "Nome do Cliente",
-              icon: Icons.person_rounded,
-              fillColor: inputColor,
-              hintColor: hintColor,
-            ),
-
-            const SizedBox(height: 32),
-
-            _buildSectionTitle(_isProduct ? "ITENS DO PEDIDO" : "DETALHES DO SERVIÇO"),
-
-            if (_isProduct) ...[
-              Row(
-                children: [
-                  Expanded(flex: 2, child: _buildModernInput(controller: _codeController, label: "Cód.", hint: "001", fillColor: inputColor, hintColor: hintColor, isDense: true)),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 2, child: _buildModernInput(controller: _unitController, label: "Un.", hint: "UN", fillColor: inputColor, hintColor: hintColor, isDense: true)),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 3, child: _buildModernInput(controller: _qtyController, label: "Qtd", isNumber: true, fillColor: inputColor, hintColor: hintColor)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: _buildModernInput(controller: _descriptionController, label: "Produto", icon: Icons.shopping_bag_outlined, fillColor: inputColor, hintColor: hintColor)),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 2, child: _buildModernInput(
-                    controller: _unitPriceController,
-                    label: "Unit.",
-                    isNumber: true,
-                    fillColor: inputColor,
-                    hintColor: hintColor,
-                    inputFormatters: [CurrencyInputFormatter()],
-                  )),
-                ],
-              ),
-            ] else ...[
-              _buildModernInput(
-                controller: _descriptionController,
-                label: "Descrição do Serviço",
-                icon: Icons.description_outlined,
-                maxLines: 3,
-                fillColor: inputColor,
-                hintColor: hintColor,
-              ),
-            ],
-
-            const SizedBox(height: 32),
-
-            _buildSectionTitle("PAGAMENTO"),
-            Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildModernInput(
-                    controller: _dateController,
-                    label: "Data",
-                    icon: Icons.calendar_today_rounded,
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: inputColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: _buildModernSegmentButton("SERVIÇO", !_isProduct, primaryColor, textColor)),
+                      Expanded(child: _buildModernSegmentButton("PRODUTO / VENDA", _isProduct, primaryColor, textColor)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                _buildSectionTitle("DADOS DO EMISSOR"),
+                _buildModernInput(
+                  controller: _issuerController,
+                  label: "Quem está emitindo?",
+                  icon: Icons.store_rounded,
+                  fillColor: inputColor,
+                  hintColor: hintColor,
+                ),
+                const SizedBox(height: 12),
+                _buildModernInput(
+                  controller: _pixController,
+                  label: "Chave Pix (Opcional)",
+                  icon: Icons.pix_rounded,
+                  fillColor: inputColor,
+                  hintColor: hintColor,
+                ),
+
+                const SizedBox(height: 32),
+
+                _buildSectionTitle("DADOS DO CLIENTE"),
+                _buildModernInput(
+                  controller: _clientController,
+                  label: "Nome do Cliente",
+                  icon: Icons.person_rounded,
+                  fillColor: inputColor,
+                  hintColor: hintColor,
+                ),
+
+                const SizedBox(height: 32),
+
+                _buildSectionTitle(_isProduct ? "ITENS DO PEDIDO" : "DETALHES DO SERVIÇO"),
+
+                if (_isProduct) ...[
+                  Row(
+                    children: [
+                      Expanded(flex: 2, child: _buildModernInput(controller: _codeController, label: "Cód.", hint: "001", fillColor: inputColor, hintColor: hintColor, isDense: true)),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 2, child: _buildModernInput(controller: _unitController, label: "Un.", hint: "UN", fillColor: inputColor, hintColor: hintColor, isDense: true)),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 3, child: _buildModernInput(controller: _qtyController, label: "Qtd", isNumber: true, fillColor: inputColor, hintColor: hintColor)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildModernInput(controller: _descriptionController, label: "Produto", icon: Icons.shopping_bag_outlined, fillColor: inputColor, hintColor: hintColor)),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 2, child: _buildModernInput(
+                        controller: _unitPriceController,
+                        label: "Unit.",
+                        isNumber: true,
+                        fillColor: inputColor,
+                        hintColor: hintColor,
+                        inputFormatters: [CurrencyInputFormatter()],
+                      )),
+                    ],
+                  ),
+                ] else ...[
+                  _buildModernInput(
+                    controller: _descriptionController,
+                    label: "Descrição do Serviço",
+                    icon: Icons.description_outlined,
+                    maxLines: 3,
                     fillColor: inputColor,
                     hintColor: hintColor,
-                    isReadOnly: true,
-                    onTap: () => _selectDate(context),
+                  ),
+                ],
+
+                const SizedBox(height: 32),
+
+                _buildSectionTitle("PAGAMENTO"),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildModernInput(
+                        controller: _dateController,
+                        label: "Data",
+                        icon: Icons.calendar_today_rounded,
+                        fillColor: inputColor,
+                        hintColor: hintColor,
+                        isReadOnly: true,
+                        onTap: () => _selectDate(context),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildModernInput(
+                        controller: _valueController,
+                        label: "Valor Total",
+                        isNumber: true,
+                        isReadOnly: _isProduct,
+                        fillColor: _isProduct ? (isDark ? Colors.black38 : Colors.grey.shade100) : inputColor,
+                        hintColor: hintColor,
+                        fontWeight: FontWeight.w800,
+                        customTextColor: Colors.green,
+                        fontSize: 18,
+                        inputFormatters: [CurrencyInputFormatter()],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 50),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_issuerController.text.isEmpty || _clientController.text.isEmpty || _valueController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha os campos obrigatórios."), backgroundColor: Colors.red));
+                        return;
+                      }
+                      _showModelSelection(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 8,
+                      shadowColor: primaryColor.withOpacity(0.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    child: Text(
+                      widget.receiptToEdit != null ? "ATUALIZAR E GERAR" : "GERAR DOCUMENTO",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                // VALOR TOTAL AGORA NA DIREITA
-                Expanded(
-                  child: _buildModernInput(
-                    controller: _valueController,
-                    label: "Valor Total",
-                    isNumber: true,
-                    isReadOnly: _isProduct,
-                    fillColor: _isProduct ? (isDark ? Colors.black38 : Colors.grey.shade100) : inputColor,
-                    hintColor: hintColor,
-                    fontWeight: FontWeight.w800,
-                    customTextColor: Colors.green,
-                    fontSize: 18,
-                    inputFormatters: [CurrencyInputFormatter()],
-                  ),
-                ),
+                const SizedBox(height: 30),
               ],
             ),
-            const SizedBox(height: 50),
-
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_issuerController.text.isEmpty || _clientController.text.isEmpty || _valueController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha os campos obrigatórios."), backgroundColor: Colors.red));
-                    return;
-                  }
-                  _showModelSelection(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  shadowColor: primaryColor.withOpacity(0.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                child: Text(
-                  widget.receiptToEdit != null ? "ATUALIZAR E GERAR" : "GERAR DOCUMENTO",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
+          ),
         ),
       ),
     );

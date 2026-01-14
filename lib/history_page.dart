@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'create_receipt_page.dart';
 import 'pdf_util.dart';
+import 'dart:ui';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -21,6 +22,58 @@ class _HistoryPageState extends State<HistoryPage> {
     super.dispose();
   }
 
+  void _editDocument(BuildContext context, Map receipt, int key) {
+    final isWebLayout = MediaQuery.of(context).size.width > 900;
+
+    if (isWebLayout) {
+      showDialog(
+        context: context,
+        barrierColor: Colors.black.withOpacity(0.2),
+        builder: (context) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+              Center(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    width: 900,
+                    height: MediaQuery.of(context).size.height * 0.95,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        )
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: CreateReceiptPage(receiptToEdit: receipt, hiveKey: key),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateReceiptPage(receiptToEdit: receipt, hiveKey: key),
+        ),
+      );
+    }
+  }
+
   void _showDeleteSnackBar(int key, Map receipt, Box box) {
     _snackBarTimer?.cancel();
 
@@ -28,7 +81,6 @@ class _HistoryPageState extends State<HistoryPage> {
     messenger.clearSnackBars();
 
     final deletedData = Map<String, dynamic>.from(receipt);
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
@@ -75,6 +127,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final primaryColor = const Color(0xFF4C86D9);
     final cardColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
+    final isWide = MediaQuery.of(context).size.width > 800;
 
     return ValueListenableBuilder(
       valueListenable: Hive.box('receipts').listenable(),
@@ -94,16 +147,19 @@ class _HistoryPageState extends State<HistoryPage> {
 
         return Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 10, bottom: 15),
-              child: Text(
-                "Faturaê: Profissionalize sua cobrança.",
-                style: TextStyle(
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    fontSize: 12, letterSpacing: 1.0, fontWeight: FontWeight.w500
+            if (!isWide)
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 15),
+                child: Text(
+                  "Faturaê: Profissionalize sua cobrança.",
+                  style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 12, letterSpacing: 1.0, fontWeight: FontWeight.w500
+                  ),
                 ),
               ),
-            ),
+
+            if (isWide) const SizedBox(height: 20),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -219,10 +275,11 @@ class _HistoryPageState extends State<HistoryPage> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // --- BOTÃO DE EDITAR ATUALIZADO AQUI ---
                             IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
                               onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => CreateReceiptPage(receiptToEdit: receipt, hiveKey: key)));
+                                _editDocument(context, receipt, key); // Chama a nova função
                               },
                             ),
                             IconButton(
