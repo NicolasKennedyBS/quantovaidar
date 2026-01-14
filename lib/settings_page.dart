@@ -127,7 +127,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               const SizedBox(height: 20),
-              const Center(child: Text("Faturaê v1.1.0", style: TextStyle(color: Colors.grey, fontSize: 10))),
+              const Center(child: Text("QuantoVaiDar? v1.1.0", style: TextStyle(color: Colors.grey, fontSize: 10))),
             ],
           );
         }
