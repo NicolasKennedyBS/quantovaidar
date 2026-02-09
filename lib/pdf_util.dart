@@ -71,8 +71,7 @@ class PdfUtil {
             case ReceiptStyle.prof_nature: return _buildProfNature(args);
             case ReceiptStyle.prof_architect: return _buildProfArchitect(args);
             case ReceiptStyle.prof_neon: return _buildProfNeon(args);
-            default: return _buildSimpleLayout(args);
-          }
+            }
         },
       ),
     );
@@ -173,11 +172,11 @@ class PdfUtil {
 
   // 2. MODERN
   static pw.Widget _buildModernLayout(List<dynamic> a) {
-    const color = PdfColors.blue800;
+    final color = PdfColors.blue800;
     return pw.Column(children: [
       pw.Container(color: color, padding: const pw.EdgeInsets.all(20), child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text("RECIBO", style: pw.TextStyle(color: PdfColors.white, fontSize: 24, fontWeight: pw.FontWeight.bold)),
-        pw.Text(a[0], style: const pw.TextStyle(color: PdfColors.white, fontSize: 14)),
+        pw.Text(a[0], style: pw.TextStyle(color: PdfColors.white, fontSize: 14)),
       ])),
       pw.SizedBox(height: 20),
       pw.Container(padding: const pw.EdgeInsets.all(10), color: PdfColors.grey100, child: pw.Row(children: [pw.Text("CLIENTE: ", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)), pw.Text(a[1])])),
@@ -218,9 +217,9 @@ class PdfUtil {
 
   // 4. PREMIUM
   static pw.Widget _buildPremiumLayout(List<dynamic> a) {
-    const gold = PdfColors.amber700;
+    final gold = PdfColors.amber700;
     return pw.Column(children: [
-      pw.Container(decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: gold, width: 3))), child: pw.Text("RECIBO PREMIUM", style: const pw.TextStyle(fontSize: 20, color: gold))),
+      pw.Container(decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: gold, width: 3))), child: pw.Text("RECIBO PREMIUM", style: pw.TextStyle(fontSize: 20, color: gold))),
       pw.SizedBox(height: 30),
       _buildGoldRow("EMISSOR", a[0], gold),
       _buildGoldRow("CLIENTE", a[1], gold),
@@ -229,7 +228,7 @@ class PdfUtil {
       pw.SizedBox(height: 20),
       if (a[5] != null) _buildPixArea(a[5]),
       pw.Spacer(),
-      pw.Text(a[4], style: const pw.TextStyle(color: gold)),
+      pw.Text(a[4], style: pw.TextStyle(color: gold)),
     ]);
   }
 
@@ -273,7 +272,7 @@ class PdfUtil {
     return pw.Stack(children: [
       pw.Container(height: 150, decoration: const pw.BoxDecoration(color: PdfColors.purple, borderRadius: pw.BorderRadius.vertical(bottom: pw.Radius.circular(20)))),
       pw.Padding(padding: const pw.EdgeInsets.all(20), child: pw.Column(children: [
-        pw.Text("Recibo Digital", style: const pw.TextStyle(color: PdfColors.white, fontSize: 18)),
+        pw.Text("Recibo Digital", style: pw.TextStyle(color: PdfColors.white, fontSize: 18)),
         pw.SizedBox(height: 20),
         pw.Container(
             padding: const pw.EdgeInsets.all(20),
