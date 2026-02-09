@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'pdf_util.dart';
 import 'pdf_preview_page.dart';
+import 'api_service.dart';
 
 class CreateReceiptPage extends StatefulWidget {
   final Map? receiptToEdit;
@@ -472,8 +473,12 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     );
   }
 
-  void _navigateToPreview(ReceiptStyle style) {
-    var box = Hive.box('receipts');
+  Future<void> _navigateToPreview(ReceiptStyle style) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
 
     String finalDescription = _descriptionController.text;
     if (_isProduct) {
@@ -481,46 +486,56 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     }
 
     final receiptData = {
-      'id': widget.receiptToEdit != null ? widget.receiptToEdit!['id'] : DateTime.now().millisecondsSinceEpoch.toString(),
       'issuer': _issuerController.text,
       'pix': _pixController.text,
       'client': _clientController.text,
-      'service': finalDescription,
+      'service': finalDescription, 
       'rawService': _descriptionController.text,
       'value': _valueController.text,
       'date': _dateController.text,
-      'style': style.index,
+      'style': style.index, 
       'isProduct': _isProduct,
       'qty': _qtyController.text,
       'unitPrice': _unitPriceController.text,
       'code': _codeController.text,
       'unit': _unitController.text,
-      'createdAt': DateTime.now().toString(),
     };
 
-    if (widget.hiveKey != null) {
-      box.put(widget.hiveKey, receiptData);
-    } else {
-      box.add(receiptData);
+    final bool success = await ApiService().createInvoice(receiptData);
+
+    if (mounted) Navigator.pop(context);
+
+    if (!success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Erro ao salvar documento. Verifique a conexão."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PdfPreviewPage(
-          issuerName: _issuerController.text,
-          pixKey: _pixController.text,
-          clientName: _clientController.text,
-          serviceDescription: _descriptionController.text,
-          value: _valueController.text,
-          date: _dateController.text,
-          style: style,
-          isProduct: _isProduct,
-          qty: _qtyController.text,
-          unitPrice: _unitPriceController.text,
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfPreviewPage(
+            issuerName: _issuerController.text,
+            pixKey: _pixController.text,
+            clientName: _clientController.text,
+            serviceDescription: _descriptionController.text,
+            value: _valueController.text,
+            date: _dateController.text,
+            style: style,
+            isProduct: _isProduct,
+            qty: _qtyController.text,
+            unitPrice: _unitPriceController.text,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 }
 

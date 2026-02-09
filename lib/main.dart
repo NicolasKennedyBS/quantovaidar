@@ -1,24 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart'; 
 import 'home_page.dart';
+import 'login_page.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   await Hive.initFlutter();
-
   await Hive.openBox('receipts');
   var settingsBox = await Hive.openBox('settings');
 
   bool initialDarkMode = settingsBox.get('isDarkMode', defaultValue: false);
 
-  runApp(FaturaeApp(initialDarkMode: initialDarkMode));
+  final prefs = await SharedPreferences.getInstance();
+  final bool isLoggedIn = prefs.getString('userId') != null;
+
+  runApp(FaturaeApp(
+    initialDarkMode: initialDarkMode, 
+    isLoggedIn: isLoggedIn
+  ));
 }
 
 class FaturaeApp extends StatelessWidget {
   final bool initialDarkMode;
+  final bool isLoggedIn;
 
-  const FaturaeApp({super.key, required this.initialDarkMode});
+  const FaturaeApp({
+    super.key, 
+    required this.initialDarkMode, 
+    required this.isLoggedIn
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +62,6 @@ class FaturaeApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF4C86D9),
               brightness: Brightness.light,
-              background: const Color(0xFFF5F7FA),
               surface: Colors.white,
             ),
             useMaterial3: true,
@@ -70,7 +82,6 @@ class FaturaeApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF4C86D9),
               brightness: Brightness.dark,
-              background: const Color(0xFF121212),
               surface: const Color(0xFF1E1E1E),
             ),
             useMaterial3: true,
@@ -95,7 +106,7 @@ class FaturaeApp extends StatelessWidget {
             ),
           ),
 
-          home: const HomePage(),
+          home: isLoggedIn ? const HomePage() : const LoginPage(),
         );
       },
     );

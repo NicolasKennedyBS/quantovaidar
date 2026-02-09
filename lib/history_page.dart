@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'create_receipt_page.dart';
 import 'pdf_util.dart';
 import 'dart:ui';
+import 'api_service.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -14,21 +14,35 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  Timer? _snackBarTimer;
+  
+  void _editDocument(BuildContext context, Map<String, dynamic> receipt) {
+    
+    final double valorNum = (receipt['totalValue'] as num).toDouble();
+    final String valorFormatado = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(valorNum);
 
-  @override
-  void dispose() {
-    _snackBarTimer?.cancel();
-    super.dispose();
-  }
+    final Map<String, dynamic> adaptedReceipt = {
+        'id': receipt['id'],
+        'client': receipt['clientName'],
+        'issuer': receipt['issuerNameSnapshot'],
+        'pix': receipt['pixKeySnapshot'],
+        'value': valorFormatado,
+        'date': receipt['issueDate'],
+        'style': receipt['styleCode'] ?? 0,
+        'isProduct': receipt['type'] == 1,
+        'service': receipt['description'],
+        'rawService': receipt['description'],
+        'qty': '1', 
+        'unitPrice': '',
+        'code': '',
+        'unit': 'UN'
+    };
 
-  void _editDocument(BuildContext context, Map receipt, int key) {
     final isWebLayout = MediaQuery.of(context).size.width > 900;
 
     if (isWebLayout) {
       showDialog(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.2),
+        barrierColor: Colors.black.withValues(alpha: 0.2),
         builder: (context) {
           return Stack(
             children: [
@@ -49,76 +63,44 @@ class _HistoryPageState extends State<HistoryPage> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 20,
                           spreadRadius: 5,
                         )
                       ],
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: CreateReceiptPage(receiptToEdit: receipt, hiveKey: key),
+                    child: CreateReceiptPage(receiptToEdit: adaptedReceipt),
                   ),
                 ),
               ),
             ],
           );
         },
-      );
+      ).then((_) => setState(() {}));
     } else {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => CreateReceiptPage(receiptToEdit: receipt, hiveKey: key),
+          builder: (context) => CreateReceiptPage(receiptToEdit: adaptedReceipt),
         ),
-      );
+      ).then((_) => setState(() {}));
     }
   }
 
-  void _showDeleteSnackBar(int key, Map receipt, Box box) {
-    _snackBarTimer?.cancel();
-
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-
-    final deletedData = Map<String, dynamic>.from(receipt);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    const actionColor = Color(0xFF4C86D9);
-
-    messenger.showSnackBar(
-      SnackBar(
-        backgroundColor: bgColor,
-        content: Text(
-            "Recibo apagado.",
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold)
-        ),
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade200, width: 1),
-        ),
-        margin: const EdgeInsets.all(20),
-        dismissDirection: DismissDirection.horizontal,
-        elevation: isDark ? 4 : 8,
-        action: SnackBarAction(
-          label: "DESFAZER",
-          textColor: actionColor,
-          onPressed: () {
-            _snackBarTimer?.cancel();
-            box.put(key, deletedData);
-            messenger.hideCurrentSnackBar();
-          },
-        ),
-      ),
-    );
-
-    _snackBarTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) {
-        messenger.hideCurrentSnackBar();
+  Future<void> _deleteReceipt(String id) async {
+      final success = await ApiService().deleteInvoice(id);
+      
+      if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Recibo apagado da nuvem."))
+          );
+          setState(() {});
+      } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Erro ao apagar. Verifique a internet."), backgroundColor: Colors.red)
+          );
       }
-    });
   }
 
   @override
@@ -129,21 +111,35 @@ class _HistoryPageState extends State<HistoryPage> {
     final textColor = isDark ? Colors.white : Colors.black87;
     final isWide = MediaQuery.of(context).size.width > 800;
 
-    return ValueListenableBuilder(
-      valueListenable: Hive.box('receipts').listenable(),
-      builder: (context, Box box, widget) {
+    return FutureBuilder<List<dynamic>>(
+      future: ApiService().getInvoices(),
+      builder: (context, snapshot) {
+        
+        if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+        }
 
-        final receipts = box.values.toList();
+        if (snapshot.hasError) {
+            return Center(child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                    const Icon(Icons.cloud_off, size: 60, color: Colors.grey),
+                    const SizedBox(height: 10),
+                    const Text("Erro ao carregar recibos."),
+                    TextButton(onPressed: () => setState((){}), child: const Text("Tentar Novamente"))
+                ],
+            ));
+        }
+
+        final receipts = snapshot.data ?? [];
         final int totalCount = receipts.length;
+        
         double totalValue = 0;
-
         for (var r in receipts) {
-          String cleanValue = r['value'].toString().replaceAll(RegExp(r'[^0-9,]'), '').replaceAll(',', '.');
-          totalValue += double.tryParse(cleanValue) ?? 0;
+            totalValue += (r['totalValue'] as num).toDouble();
         }
 
         final formattedTotal = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(totalValue);
-        final keys = box.keys.toList().cast<int>().reversed.toList();
 
         return Column(
           children: [
@@ -172,7 +168,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         color: cardColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
-                        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +188,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       decoration: BoxDecoration(
                         color: primaryColor,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                        boxShadow: [BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,90 +218,96 @@ class _HistoryPageState extends State<HistoryPage> {
             const SizedBox(height: 10),
 
             Expanded(
-              child: box.isEmpty
+              child: receipts.isEmpty
                   ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.folder_open_rounded, size: 60, color: Colors.grey[300]),
-                    const SizedBox(height: 10),
-                    Text("Nenhum recibo ainda", style: TextStyle(color: Colors.grey[400])),
-                  ],
-                ),
-              )
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.folder_open_rounded, size: 60, color: Colors.grey[300]),
+                        const SizedBox(height: 10),
+                        Text("Nenhum recibo na nuvem", style: TextStyle(color: Colors.grey[400])),
+                      ],
+                    ),
+                  )
                   : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: keys.length,
-                itemBuilder: (context, index) {
-                  final int key = keys[index];
-                  final Map receipt = box.get(key);
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: receipts.length,
+                      itemBuilder: (context, index) {
+                        final Map<String, dynamic> r = receipts[receipts.length - 1 - index];
+                        
+                        final String id = r['id'];
+                        final double val = (r['totalValue'] as num).toDouble();
+                        final String valFormatted = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(val);
+                        final bool isProduct = r['type'] == 1;
 
-                  return Dismissible(
-                    key: ValueKey(key),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(color: Colors.red[400], borderRadius: BorderRadius.circular(16)),
-                      child: const Icon(Icons.delete_outline, color: Colors.white),
-                    ),
-                    onDismissed: (direction) {
-                      box.delete(key);
-                      _showDeleteSnackBar(key, receipt, box);
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade100),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: CircleAvatar(
-                          backgroundColor: isDark ? Colors.grey[800] : Colors.blue[50],
-                          child: Icon(
-                              receipt['isProduct'] == true ? Icons.shopping_bag_outlined : Icons.work_outline,
-                              color: primaryColor, size: 20
+                        return Dismissible(
+                          key: Key(id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(color: Colors.red[400], borderRadius: BorderRadius.circular(16)),
+                            child: const Icon(Icons.delete_outline, color: Colors.white),
                           ),
-                        ),
-                        title: Text(receipt['client'] ?? 'Sem Nome', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
-                        subtitle: Text("${receipt['date']} • ${receipt['value']}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // --- BOTÃO DE EDITAR ATUALIZADO AQUI ---
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
-                              onPressed: () {
-                                _editDocument(context, receipt, key); // Chama a nova função
-                              },
+                          confirmDismiss: (direction) async {
+                              return true;
+                          },
+                          onDismissed: (direction) {
+                             _deleteReceipt(id);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade100),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.share_rounded, size: 20, color: primaryColor),
-                              onPressed: () {
-                                PdfUtil.generateAndShare(
-                                  issuerName: receipt['issuer'],
-                                  pixKey: receipt['pix'] ?? '',
-                                  clientName: receipt['client'],
-                                  serviceDescription: receipt['service'],
-                                  value: receipt['value'],
-                                  date: receipt['date'],
-                                  style: ReceiptStyle.values[receipt['style']],
-                                  isProduct: receipt['isProduct'] ?? false,
-                                  qty: receipt['qty'] ?? '1',
-                                  unitPrice: receipt['unitPrice'] ?? '',
-                                );
-                              },
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              leading: CircleAvatar(
+                                backgroundColor: isDark ? Colors.grey[800] : Colors.blue[50],
+                                child: Icon(
+                                    isProduct ? Icons.shopping_bag_outlined : Icons.work_outline,
+                                    color: primaryColor, size: 20
+                                ),
+                              ),
+                              title: Text(r['clientName'] ?? 'Sem Nome', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+                              subtitle: Text("${r['issueDate']} • $valFormatted", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
+                                    onPressed: () {
+                                      _editDocument(context, r);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.share_rounded, size: 20, color: primaryColor),
+                                    onPressed: () {
+                                      // Gera o PDF na hora
+                                      PdfUtil.generateAndShare(
+                                        issuerName: r['issuerNameSnapshot'],
+                                        pixKey: r['pixKeySnapshot'] ?? '',
+                                        clientName: r['clientName'],
+                                        serviceDescription: r['description'] ?? '',
+                                        value: valFormatted,
+                                        date: r['issueDate'],
+                                        style: ReceiptStyle.values[r['styleCode'] ?? 0],
+                                        isProduct: isProduct,
+                                        qty: '1', 
+                                        unitPrice: '',
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart';
+import 'login_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -11,43 +14,59 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _nameController = TextEditingController();
   final _pixController = TextEditingController();
-  final _phoneController = TextEditingController();
-
-  final Box settingsBox = Hive.box('settings');
+  
+  SharedPreferences? _prefs;
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = settingsBox.get('default_name', defaultValue: '');
-    _pixController.text = settingsBox.get('default_pix', defaultValue: '');
-    _phoneController.text = settingsBox.get('default_phone', defaultValue: '');
+    _loadSettings();
   }
 
-  void _saveSettings() {
-    settingsBox.put('default_name', _nameController.text);
-    settingsBox.put('default_pix', _pixController.text);
-    settingsBox.put('default_phone', _phoneController.text);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Dados salvos com sucesso!"), backgroundColor: Colors.green),
-    );
+  Future<void> _loadSettings() async {
+    _prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _nameController.text = _prefs?.getString('default_name') ?? '';
+      _pixController.text = _prefs?.getString('default_pix') ?? '';
+    });
   }
 
-  void _clearHistory() {
+  Future<void> _saveSettings() async {
+    if (_prefs != null) {
+      await _prefs!.setString('default_name', _nameController.text);
+      await _prefs!.setString('default_pix', _pixController.text);
+      
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Dados padrão salvos neste celular!"), backgroundColor: Colors.green),
+      );
+    }
+  }
+
+  void _logout() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Apagar Histórico?"),
-        content: const Text("Isso vai apagar todos os recibos salvos. Não dá para desfazer."),
+        title: const Text("Sair da Conta?"),
+        content: const Text("Você voltará para a tela de login."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
           TextButton(
-            onPressed: () {
-              Hive.box('receipts').clear();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Histórico limpo.")));
+            onPressed: () async {
+              await ApiService().logout();
+              
+              if (mounted) {
+                Navigator.pop(context);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (route) => false,
+                );
+              }
             },
-            child: const Text("Apagar Tudo", style: TextStyle(color: Colors.red)),
+            child: const Text("SAIR", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -57,7 +76,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-        valueListenable: settingsBox.listenable(),
+        valueListenable: Hive.box('settings').listenable(),
         builder: (context, Box box, _) {
           final isDark = box.get('isDarkMode', defaultValue: false);
 
@@ -81,11 +100,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const Text(
                 "Meus Dados (Padrão)",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4C86D9)),
               ),
               const SizedBox(height: 5),
               const Text(
-                "Preencha aqui para preencher automaticamente novos recibos.",
+                "Preenchemos automaticamente novos recibos com estes dados.",
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 20),
@@ -107,7 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: ElevatedButton.icon(
                   onPressed: _saveSettings,
                   icon: const Icon(Icons.save),
-                  label: const Text("SALVAR DADOS PADRÃO"),
+                  label: const Text("SALVAR NESTE CELULAR"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4C86D9),
                     foregroundColor: Colors.white,
@@ -121,13 +140,15 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 20),
 
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text("Limpar Histórico", style: TextStyle(color: Colors.red)),
-                onTap: _clearHistory,
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text("Sair da Conta", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                onTap: _logout,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.red.withOpacity(0.2))),
               ),
 
               const SizedBox(height: 20),
-              const Center(child: Text("QuantoVaiDar? v1.1.0", style: TextStyle(color: Colors.grey, fontSize: 10))),
+              Center(child: Text("Usuário: ${_prefs?.getString('userName') ?? '...'}", style: const TextStyle(color: Colors.grey, fontSize: 12))),
+              const Center(child: Text("Versão Cloud v1.0", style: TextStyle(color: Colors.grey, fontSize: 10))),
             ],
           );
         }
