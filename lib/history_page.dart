@@ -84,7 +84,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final actionColor = const Color(0xFF4C86D9);
+    const actionColor = Color(0xFF4C86D9);
 
     messenger.showSnackBar(
       SnackBar(
@@ -124,7 +124,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF4C86D9);
+    const primaryColor = Color(0xFF4C86D9);
     final cardColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final isWide = MediaQuery.of(context).size.width > 800;
@@ -177,7 +177,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.description_outlined, color: primaryColor, size: 24),
+                          const Icon(Icons.description_outlined, color: primaryColor, size: 24),
                           const SizedBox(height: 10),
                           Text("Emitidos", style: TextStyle(color: Colors.grey[500], fontSize: 12)),
                           Text("$totalCount", style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold)),
@@ -283,7 +283,7 @@ class _HistoryPageState extends State<HistoryPage> {
                               },
                             ),
                             IconButton(
-                              icon: Icon(Icons.share_rounded, size: 20, color: primaryColor),
+                              icon: const Icon(Icons.share_rounded, size: 20, color: primaryColor),
                               onPressed: () {
                                 PdfUtil.generateAndShare(
                                   issuerName: receipt['issuer'],

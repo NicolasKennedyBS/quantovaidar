@@ -79,7 +79,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF4C86D9);
+    const primaryColor = Color(0xFF4C86D9);
     final surfaceColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final scaffoldColor = Theme.of(context).scaffoldBackgroundColor;
 
@@ -143,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                     destinations: [
                       NavigationRailDestination(
                         icon: const Icon(Icons.receipt_long_outlined),
-                        selectedIcon: Icon(Icons.receipt_long_rounded, color: primaryColor),
+                        selectedIcon: const Icon(Icons.receipt_long_rounded, color: primaryColor),
                         label: Text("Histórico", style: TextStyle(
                             color: _selectedIndex == 0 ? primaryColor : Colors.grey,
                             fontWeight: _selectedIndex == 0 ? FontWeight.bold : FontWeight.normal
@@ -151,7 +151,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       NavigationRailDestination(
                         icon: const Icon(Icons.settings_outlined),
-                        selectedIcon: Icon(Icons.settings_rounded, color: primaryColor),
+                        selectedIcon: const Icon(Icons.settings_rounded, color: primaryColor),
                         label: Text("Ajustes", style: TextStyle(
                             color: _selectedIndex == 1 ? primaryColor : Colors.grey,
                             fontWeight: _selectedIndex == 1 ? FontWeight.bold : FontWeight.normal

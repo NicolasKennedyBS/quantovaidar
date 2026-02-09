@@ -90,8 +90,8 @@ class FaturaeApp extends StatelessWidget {
             navigationBarTheme: NavigationBarThemeData(
               backgroundColor: const Color(0xFF1E1E1E),
               indicatorColor: const Color(0xFF4C86D9).withOpacity(0.5),
-              iconTheme: MaterialStateProperty.all(const IconThemeData(color: Colors.white)),
-              labelTextStyle: MaterialStateProperty.all(const TextStyle(color: Colors.white)),
+              iconTheme: WidgetStateProperty.all(const IconThemeData(color: Colors.white)),
+              labelTextStyle: WidgetStateProperty.all(const TextStyle(color: Colors.white)),
             ),
           ),
 

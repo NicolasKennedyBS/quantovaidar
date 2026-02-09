@@ -110,7 +110,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
     final inputColor = isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF5F7FA);
-    final primaryColor = const Color(0xFF4C86D9);
+    const primaryColor = Color(0xFF4C86D9);
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = Colors.grey[500]!;
 
