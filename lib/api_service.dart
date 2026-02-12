@@ -109,6 +109,7 @@ class ApiService {
         .trim();
 
     final Map<String, dynamic> body = {
+      if (receiptData['id'] != null) "id": receiptData['id'],
       "user": {"id": userId},
       "clientName": receiptData['client'],
       "issuerNameSnapshot": receiptData['issuer'],
@@ -116,8 +117,15 @@ class ApiService {
       "totalValue": double.tryParse(cleanValue) ?? 0.0,
       "issueDate": DateTime.now().toIso8601String().substring(0, 10),
       "styleCode": receiptData['style'] ?? 0,
-      "type": receiptData['isProduct'] == true ? 1 : 0,
-      "description": receiptData['service']
+      
+      "type": receiptData['type'] ?? 0, 
+      
+      "description": receiptData['description'],
+      "rawDescription": receiptData['rawDescription'],
+      "itemUnit": receiptData['itemUnit'],
+      "itemQty": receiptData['itemQty']?.toString(),
+      "itemPrice": receiptData['itemPrice']?.toString(),
+      "itemCode": receiptData['itemCode']
     };
 
     try {
@@ -126,13 +134,17 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
+      
+      if (response.statusCode != 200) {
+         if (kDebugMode) print("Erro Server: ${response.body}");
+      }
+      
       return response.statusCode == 200;
     } catch (e) {
-      print("Erro Create Invoice: $e");
+      if (kDebugMode) print("Erro Create Invoice: $e");
       return false;
     }
   }
-
   Future<bool> deleteInvoice(String id) async {
     try {
       final response = await http.delete(Uri.parse('$baseUrl/invoice/$id'));

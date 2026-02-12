@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'pdf_util.dart';
 import 'pdf_preview_page.dart';
 import 'api_service.dart';
@@ -27,11 +26,33 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   final _qtyController = TextEditingController(text: '1');
   final _unitPriceController = TextEditingController();
   final _codeController = TextEditingController();
-  final _unitController = TextEditingController(text: 'UN');
+
+  String _selectedUnit = 'UN';
+  final List<String> _unitOptions = [
+    'UN',
+    'KG',
+    'G',
+    'MG',
+    'L',
+    'ML',
+    'M',
+    'M²',
+    'M³',
+    'CM',
+    'MM',
+    'CX',
+    'DZ',
+    'PAR',
+    'TON',
+    'KIT',
+    'PC',
+    'ROLO',
+    'SC',
+    'GL'
+  ];
 
   bool _isProduct = false;
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -40,21 +61,46 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
 
     if (widget.receiptToEdit != null) {
       final r = widget.receiptToEdit!;
-      _issuerController.text = r['issuer'];
+      _issuerController.text = r['issuer'] ?? '';
       _pixController.text = r['pix'] ?? '';
-      _clientController.text = r['client'];
-      _valueController.text = r['value'];
-      _dateController.text = r['date'];
+      _clientController.text = r['client'] ?? '';
+      _valueController.text = r['value'] ?? '';
+
+      if (r['date'] != null && r['date'].toString().isNotEmpty) {
+        try {
+          DateTime dt = DateTime.parse(r['date']);
+          _dateController.text = DateFormat('dd/MM/yyyy').format(dt);
+        } catch (e) {
+          _dateController.text = r['date'];
+        }
+      } else {
+        _dateController.text = '';
+      }
 
       _isProduct = r['isProduct'] ?? false;
+
       if (_isProduct) {
-        _descriptionController.text = r['rawService'] ?? '';
-        _qtyController.text = r['qty'] ?? '1';
-        _unitPriceController.text = r['unitPrice'] ?? '';
-        _codeController.text = r['code'] ?? '';
-        _unitController.text = r['unit'] ?? 'UN';
+        _descriptionController.text = r['rawDescription'] ??
+            r['description'].toString().split('(')[0].trim();
+
+        _qtyController.text =
+            r['itemQty']?.toString() ?? r['qty']?.toString() ?? '1';
+        _unitPriceController.text =
+            r['itemPrice']?.toString() ?? r['unitPrice']?.toString() ?? '';
+        _codeController.text =
+            r['itemCode']?.toString() ?? r['code']?.toString() ?? '';
+
+        String loadedUnit =
+            (r['itemUnit'] ?? r['unit'] ?? 'UN').toString().toUpperCase();
+        if (_unitOptions.contains(loadedUnit)) {
+          _selectedUnit = loadedUnit;
+        } else {
+          _unitOptions.add(loadedUnit);
+          _selectedUnit = loadedUnit;
+        }
       } else {
-        _descriptionController.text = r['service'];
+        _descriptionController.text =
+            r['rawDescription'] ?? r['service'] ?? r['description'] ?? '';
       }
     } else {
       _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
@@ -74,6 +120,13 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   void dispose() {
     _qtyController.dispose();
     _unitPriceController.dispose();
+    _issuerController.dispose();
+    _pixController.dispose();
+    _clientController.dispose();
+    _descriptionController.dispose();
+    _valueController.dispose();
+    _dateController.dispose();
+    _codeController.dispose();
     super.dispose();
   }
 
@@ -217,14 +270,47 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                               isDense: true)),
                       const SizedBox(width: 12),
                       Expanded(
-                          flex: 2,
-                          child: _buildModernInput(
-                              controller: _unitController,
-                              label: "Un.",
-                              hint: "UN",
-                              fillColor: inputColor,
-                              hintColor: hintColor,
-                              isDense: true)),
+                        flex: 2,
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: inputColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? Colors.grey.shade200
+                                    : Colors.transparent),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedUnit,
+                              isExpanded: true,
+                              icon:
+                                  Icon(Icons.arrow_drop_down, color: hintColor),
+                              style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500),
+                              dropdownColor: isDark
+                                  ? const Color(0xFF2C2C2C)
+                                  : Colors.white,
+                              items: _unitOptions.map((String unit) {
+                                return DropdownMenuItem<String>(
+                                  value: unit,
+                                  child: Text(unit),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _selectedUnit = newValue!;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                           flex: 3,
@@ -327,7 +413,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
                       elevation: 8,
-                      shadowColor: primaryColor.withOpacity(0.5),
+                      shadowColor: primaryColor.withValues(alpha: 0.5),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20)),
                     ),
@@ -380,7 +466,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 4,
                       spreadRadius: 1)
                 ]
@@ -442,7 +528,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
           labelStyle: TextStyle(
               color: hintColor, fontSize: 14, fontWeight: FontWeight.w500),
           hintText: hint,
-          hintStyle: TextStyle(color: hintColor.withOpacity(0.7)),
+          hintStyle: TextStyle(color: hintColor.withValues(alpha: 0.7)),
           prefixText: prefixText,
           border: InputBorder.none,
           isDense: true,
@@ -644,7 +730,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
             ? []
             : [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 8,
                     offset: const Offset(0, 4))
               ],
@@ -654,7 +740,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
         leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: color)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -678,25 +764,37 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
     );
 
     String finalDescription = _descriptionController.text;
+
     if (_isProduct) {
       finalDescription =
-          "${_qtyController.text}x ${_descriptionController.text} (Un: R\$ ${_unitPriceController.text})";
+          "${_qtyController.text}x ${_descriptionController.text} ($_selectedUnit: ${_unitPriceController.text})";
+    }
+
+    String apiDate = _dateController.text;
+    try {
+      if (apiDate.contains('/')) {
+        var parts = apiDate.split('/');
+        apiDate = "${parts[2]}-${parts[1]}-${parts[0]}";
+      }
+    } catch (e) {
+      print("Erro ao converter data: $e");
     }
 
     final receiptData = {
+      'id': widget.receiptToEdit?['id'],
       'issuer': _issuerController.text,
       'pix': _pixController.text,
       'client': _clientController.text,
-      'service': finalDescription,
-      'rawService': _descriptionController.text,
+      'description': finalDescription,
       'value': _valueController.text,
-      'date': _dateController.text,
-      'style': style.index,
-      'isProduct': _isProduct,
-      'qty': _qtyController.text,
-      'unitPrice': _unitPriceController.text,
-      'code': _codeController.text,
-      'unit': _unitController.text,
+      'issueDate': apiDate,
+      'styleCode': style.index,
+      'type': _isProduct ? 1 : 0,
+      'rawDescription': _descriptionController.text,
+      'itemQty': _qtyController.text,
+      'itemUnit': _selectedUnit,
+      'itemPrice': _unitPriceController.text,
+      'itemCode': _codeController.text,
     };
 
     final bool success = await ApiService().createInvoice(receiptData);
@@ -730,6 +828,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
             isProduct: _isProduct,
             qty: _qtyController.text,
             unitPrice: _unitPriceController.text,
+            unit: _selectedUnit,
           ),
         ),
       );

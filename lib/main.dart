@@ -23,7 +23,7 @@ void main() async {
   ));
 }
 
-class FaturaeApp extends StatelessWidget {
+class FaturaeApp extends StatefulWidget {
   final bool initialDarkMode;
   final bool isLoggedIn;
 
@@ -34,12 +34,24 @@ class FaturaeApp extends StatelessWidget {
   });
 
   @override
+  State<FaturaeApp> createState() => _FaturaeAppState();
+}
+
+class _FaturaeAppState extends State<FaturaeApp> {
+  late bool _isLoggedIn;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLoggedIn = widget.isLoggedIn;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
       valueListenable: Hive.box('settings').listenable(),
-      builder: (context, Box box, widget) {
-
-        final isDark = box.get('isDarkMode', defaultValue: initialDarkMode);
+      builder: (context, Box box, _) {
+        final isDark = box.get('isDarkMode', defaultValue: widget.initialDarkMode);
 
         return MaterialApp(
           title: 'QuantoVaiDar?',
@@ -72,9 +84,7 @@ class FaturaeApp extends StatelessWidget {
               foregroundColor: Colors.black,
               elevation: 0,
             ),
-            cardTheme: const CardThemeData(
-              color: Colors.white,
-            ),
+            cardTheme: const CardThemeData(color: Colors.white),
           ),
 
           darkTheme: ThemeData(
@@ -92,21 +102,16 @@ class FaturaeApp extends StatelessWidget {
               foregroundColor: Colors.white,
               elevation: 0,
             ),
-            cardTheme: const CardThemeData(
-              color: Color(0xFF1E1E1E),
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF1E1E1E),
-            ),
+            cardTheme: const CardThemeData(color: Color(0xFF1E1E1E)),
+            dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF1E1E1E)),
             navigationBarTheme: NavigationBarThemeData(
               backgroundColor: const Color(0xFF1E1E1E),
-              indicatorColor: const Color(0xFF4C86D9).withOpacity(0.5),
+              indicatorColor: const Color(0xFF4C86D9).withValues(alpha: 0.5),
               iconTheme: WidgetStateProperty.all(const IconThemeData(color: Colors.white)),
               labelTextStyle: WidgetStateProperty.all(const TextStyle(color: Colors.white)),
             ),
           ),
-
-          home: isLoggedIn ? const HomePage() : const LoginPage(),
+          home: _isLoggedIn ? const HomePage() : const LoginPage(),
         );
       },
     );

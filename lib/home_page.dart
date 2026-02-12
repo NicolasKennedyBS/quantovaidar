@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> {
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) => const SizedBox(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -60,42 +60,59 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isWide = MediaQuery.of(context).size.width > 900;
-    const primaryColor = Color(0xFF4C86D9);
+ Widget build(BuildContext context) {
+   final isDark = Theme.of(context).brightness == Brightness.dark;
+   final isWide = MediaQuery.of(context).size.width > 900;
+   const primaryColor = Color(0xFF4C86D9);
 
-    return Scaffold(
-      body: RepaintBoundary(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: _pages,
-        ),
-      ),
-      appBar: isWide ? null : AppBar(
-        title: Image.asset('assets/images/quantovaidartittle.png', height: 55, color: isDark ? Colors.white : null),
-        centerTitle: true, elevation: 0, backgroundColor: Colors.transparent,
-      ),
-      floatingActionButton: isWide 
-        ? null 
-        : FloatingActionButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateReceiptPage())),
-            backgroundColor: primaryColor,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: isWide ? null : BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(icon: Icon(Icons.receipt_long, color: _selectedIndex == 0 ? primaryColor : Colors.grey), onPressed: () => _onItemTapped(0)),
-            const SizedBox(width: 40),
-            IconButton(icon: Icon(Icons.settings, color: _selectedIndex == 1 ? primaryColor : Colors.grey), onPressed: () => _onItemTapped(1)),
-          ],
-        ),
-      ),
-    );
-  }
+   return Scaffold(
+     body: RepaintBoundary(
+       child: IndexedStack(
+         index: _selectedIndex,
+         children: _pages,
+       ),
+     ),
+     appBar: isWide 
+       ? null 
+       : AppBar(
+           title: Image.asset('assets/images/quantovaidartittle.png', 
+             height: 55, color: isDark ? Colors.white : null),
+           centerTitle: true, elevation: 0, backgroundColor: Colors.transparent,
+         ),
+     
+     floatingActionButton: isWide 
+       ? null 
+       : FloatingActionButton(
+           onPressed: () {
+             if (isWide) {
+               _openFloatingWindow(context, const CreateReceiptPage());
+             } else {
+               Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateReceiptPage()));
+             }
+           },
+           backgroundColor: primaryColor,
+           child: const Icon(Icons.add, color: Colors.white),
+         ),
+     floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+     
+     bottomNavigationBar: isWide ? null : BottomAppBar(
+       shape: const CircularNotchedRectangle(),
+       notchMargin: 8,
+       child: Row(
+         mainAxisAlignment: MainAxisAlignment.spaceAround,
+         children: [
+           IconButton(
+             icon: Icon(Icons.receipt_long, color: _selectedIndex == 0 ? primaryColor : Colors.grey), 
+             onPressed: () => _onItemTapped(0)
+           ),
+           const SizedBox(width: 40),
+           IconButton(
+             icon: Icon(Icons.settings, color: _selectedIndex == 1 ? primaryColor : Colors.grey), 
+             onPressed: () => _onItemTapped(1)
+           ),
+         ],
+       ),
+     ),
+   );
+ }
 }

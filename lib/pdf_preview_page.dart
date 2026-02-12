@@ -13,6 +13,7 @@ class PdfPreviewPage extends StatelessWidget {
   final bool isProduct;
   final String qty;
   final String unitPrice;
+  final String unit;
 
   const PdfPreviewPage({
     super.key,
@@ -26,6 +27,7 @@ class PdfPreviewPage extends StatelessWidget {
     required this.isProduct,
     required this.qty,
     required this.unitPrice,
+    required this.unit,
   });
 
   @override
@@ -60,6 +62,7 @@ class PdfPreviewPage extends StatelessWidget {
               isProduct: isProduct,
               qty: qty,
               unitPrice: unitPrice,
+              unit: unit,
             ),
           ),
         ),

@@ -65,7 +65,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -89,7 +88,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                      side: BorderSide(
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: SwitchListTile(
                       title: const Text("Modo Escuro",
