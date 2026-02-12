@@ -12,9 +12,9 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  bool _isLoading = false;
   final _nameController = TextEditingController();
   final _pixController = TextEditingController();
-  
   SharedPreferences? _prefs;
 
   @override
@@ -32,126 +32,154 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    if (_prefs != null) {
-      await _prefs!.setString('default_name', _nameController.text);
-      await _prefs!.setString('default_pix', _pixController.text);
-      
+    setState(() => _isLoading = true);
+
+    final success = await ApiService()
+        .updateProfile(_nameController.text, _pixController.text);
+
+    if (success) {
+      await _prefs?.setString('default_name', _nameController.text);
+      await _prefs?.setString('default_pix', _pixController.text);
     }
 
     if (mounted) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Dados padrão salvos neste celular!"), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text(success ? "Dados salvos na nuvem!" : "Erro ao salvar"),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
       );
     }
   }
 
-  void _logout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Sair da Conta?"),
-        content: const Text("Você voltará para a tela de login."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-          TextButton(
-            onPressed: () async {
-              await ApiService().logout();
-              
-              if (mounted) {
-                Navigator.pop(context);
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                  (route) => false,
-                );
-              }
-            },
-            child: const Text("SAIR", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  void _logout() async {
+    await ApiService().logout();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: ValueListenableBuilder(
         valueListenable: Hive.box('settings').listenable(),
         builder: (context, Box box, _) {
-          final isDark = box.get('isDarkMode', defaultValue: false);
+          final isDarkMode = box.get('isDarkMode', defaultValue: false);
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: SwitchListTile(
-                  title: const Text("Modo Escuro", style: TextStyle(fontWeight: FontWeight.bold)),
-                  secondary: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
-                  value: isDark,
-                  onChanged: (val) {
-                    box.put('isDarkMode', val);
-                  },
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              const Text(
-                "Meus Dados (Padrão)",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4C86D9)),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                "Preenchemos automaticamente novos recibos com estes dados.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: "Nome da Empresa / Emissor", prefixIcon: Icon(Icons.business), border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-
-              TextField(
-                controller: _pixController,
-                decoration: const InputDecoration(labelText: "Chave Pix (Opcional)", prefixIcon: Icon(Icons.pix), border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-
-              SizedBox(
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _saveSettings,
-                  icon: const Icon(Icons.save),
-                  label: const Text("SALVAR NESTE CELULAR"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4C86D9),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: ListView(
+                padding: const EdgeInsets.all(32),
+                children: [
+                  const Text(
+                    "Configurações",
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
-                ),
+                  const SizedBox(height: 30),
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                    ),
+                    child: SwitchListTile(
+                      title: const Text("Modo Escuro",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      secondary:
+                          Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
+                      value: isDarkMode,
+                      onChanged: (val) => box.put('isDarkMode', val),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    "Meus Dados Padrão",
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4C86D9)),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: "Nome da Empresa",
+                      prefixIcon: Icon(Icons.business),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _pixController,
+                    decoration: const InputDecoration(
+                      labelText: "Chave Pix",
+                      prefixIcon: Icon(Icons.pix),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    height: 55,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _saveSettings,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.cloud_upload),
+                      label:
+                          Text(_isLoading ? "SALVANDO..." : "SALVAR NA NUVEM"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4C86D9),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 50),
+                  const Divider(),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    label: const Text("Sair da Conta",
+                        style: TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Center(
+                    child: Text(
+                      "Usuário: ${_userName()}\nQuantoVaiDar? v1.0",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 40),
-              const Divider(),
-              const SizedBox(height: 20),
-
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text("Sair da Conta", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                onTap: _logout,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.red.withOpacity(0.2))),
-              ),
-
-              const SizedBox(height: 20),
-              Center(child: Text("Usuário: ${_prefs?.getString('userName') ?? '...'}", style: const TextStyle(color: Colors.grey, fontSize: 12))),
-              const Center(child: Text("Versão Cloud v1.0", style: TextStyle(color: Colors.grey, fontSize: 10))),
-            ],
+            ),
           );
-        }
+        },
+      ),
     );
   }
+
+  String _userName() => _prefs?.getString('userName') ?? '...';
 }

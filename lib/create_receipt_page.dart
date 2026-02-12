@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'pdf_util.dart';
 import 'pdf_preview_page.dart';
 import 'api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CreateReceiptPage extends StatefulWidget {
   final Map? receiptToEdit;
@@ -31,6 +32,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   bool _isProduct = false;
 
   @override
+  @override
   void initState() {
     super.initState();
     _qtyController.addListener(_calculateTotal);
@@ -56,10 +58,16 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
       }
     } else {
       _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
-      var settingsBox = Hive.box('settings');
-      _issuerController.text = settingsBox.get('default_name', defaultValue: '');
-      _pixController.text = settingsBox.get('default_pix', defaultValue: '');
+      _loadDefaultData();
     }
+  }
+
+  Future<void> _loadDefaultData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _issuerController.text = prefs.getString('default_name') ?? '';
+      _pixController.text = prefs.getString('default_pix') ?? '';
+    });
   }
 
   @override
@@ -72,11 +80,13 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   void _calculateTotal() {
     if (_isProduct) {
       double qty = double.tryParse(_qtyController.text) ?? 0;
-      String rawPrice = _unitPriceController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      String rawPrice =
+          _unitPriceController.text.replaceAll(RegExp(r'[^0-9]'), '');
       double price = (double.tryParse(rawPrice) ?? 0) / 100;
       double total = qty * price;
       if (total > 0) {
-        _valueController.text = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(total);
+        _valueController.text =
+            NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(total);
       }
     }
   }
@@ -92,8 +102,14 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: isDark
-                ? const ColorScheme.dark(primary: Color(0xFF4C86D9), onPrimary: Colors.white, surface: Color(0xFF1E1E1E))
-                : const ColorScheme.light(primary: Color(0xFF4C86D9), onPrimary: Colors.white, surface: Colors.white),
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF4C86D9),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E1E1E))
+                : const ColorScheme.light(
+                    primary: Color(0xFF4C86D9),
+                    onPrimary: Colors.white,
+                    surface: Colors.white),
           ),
           child: child!,
         );
@@ -110,7 +126,8 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
-    final inputColor = isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF5F7FA);
+    final inputColor =
+        isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF5F7FA);
     const primaryColor = Color(0xFF4C86D9);
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = Colors.grey[500]!;
@@ -126,7 +143,8 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 22),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: textColor, size: 22),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -134,7 +152,8 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -146,13 +165,16 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                   ),
                   child: Row(
                     children: [
-                      Expanded(child: _buildModernSegmentButton("SERVIÇO", !_isProduct, primaryColor, textColor)),
-                      Expanded(child: _buildModernSegmentButton("PRODUTO / VENDA", _isProduct, primaryColor, textColor)),
+                      Expanded(
+                          child: _buildModernSegmentButton(
+                              "SERVIÇO", !_isProduct, primaryColor, textColor)),
+                      Expanded(
+                          child: _buildModernSegmentButton("PRODUTO / VENDA",
+                              _isProduct, primaryColor, textColor)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
-
                 _buildSectionTitle("DADOS DO EMISSOR"),
                 _buildModernInput(
                   controller: _issuerController,
@@ -169,9 +191,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                   fillColor: inputColor,
                   hintColor: hintColor,
                 ),
-
                 const SizedBox(height: 32),
-
                 _buildSectionTitle("DADOS DO CLIENTE"),
                 _buildModernInput(
                   controller: _clientController,
@@ -180,35 +200,65 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                   fillColor: inputColor,
                   hintColor: hintColor,
                 ),
-
                 const SizedBox(height: 32),
-
-                _buildSectionTitle(_isProduct ? "ITENS DO PEDIDO" : "DETALHES DO SERVIÇO"),
-
+                _buildSectionTitle(
+                    _isProduct ? "ITENS DO PEDIDO" : "DETALHES DO SERVIÇO"),
                 if (_isProduct) ...[
                   Row(
                     children: [
-                      Expanded(flex: 2, child: _buildModernInput(controller: _codeController, label: "Cód.", hint: "001", fillColor: inputColor, hintColor: hintColor, isDense: true)),
+                      Expanded(
+                          flex: 2,
+                          child: _buildModernInput(
+                              controller: _codeController,
+                              label: "Cód.",
+                              hint: "001",
+                              fillColor: inputColor,
+                              hintColor: hintColor,
+                              isDense: true)),
                       const SizedBox(width: 12),
-                      Expanded(flex: 2, child: _buildModernInput(controller: _unitController, label: "Un.", hint: "UN", fillColor: inputColor, hintColor: hintColor, isDense: true)),
+                      Expanded(
+                          flex: 2,
+                          child: _buildModernInput(
+                              controller: _unitController,
+                              label: "Un.",
+                              hint: "UN",
+                              fillColor: inputColor,
+                              hintColor: hintColor,
+                              isDense: true)),
                       const SizedBox(width: 12),
-                      Expanded(flex: 3, child: _buildModernInput(controller: _qtyController, label: "Qtd", isNumber: true, fillColor: inputColor, hintColor: hintColor)),
+                      Expanded(
+                          flex: 3,
+                          child: _buildModernInput(
+                              controller: _qtyController,
+                              label: "Qtd",
+                              isNumber: true,
+                              fillColor: inputColor,
+                              hintColor: hintColor)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(flex: 3, child: _buildModernInput(controller: _descriptionController, label: "Produto", icon: Icons.shopping_bag_outlined, fillColor: inputColor, hintColor: hintColor)),
+                      Expanded(
+                          flex: 3,
+                          child: _buildModernInput(
+                              controller: _descriptionController,
+                              label: "Produto",
+                              icon: Icons.shopping_bag_outlined,
+                              fillColor: inputColor,
+                              hintColor: hintColor)),
                       const SizedBox(width: 12),
-                      Expanded(flex: 2, child: _buildModernInput(
-                        controller: _unitPriceController,
-                        label: "Unit.",
-                        isNumber: true,
-                        fillColor: inputColor,
-                        hintColor: hintColor,
-                        inputFormatters: [CurrencyInputFormatter()],
-                      )),
+                      Expanded(
+                          flex: 2,
+                          child: _buildModernInput(
+                            controller: _unitPriceController,
+                            label: "Unit.",
+                            isNumber: true,
+                            fillColor: inputColor,
+                            hintColor: hintColor,
+                            inputFormatters: [CurrencyInputFormatter()],
+                          )),
                     ],
                   ),
                 ] else ...[
@@ -221,9 +271,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                     hintColor: hintColor,
                   ),
                 ],
-
                 const SizedBox(height: 32),
-
                 _buildSectionTitle("PAGAMENTO"),
                 Row(
                   children: [
@@ -245,7 +293,9 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                         label: "Valor Total",
                         isNumber: true,
                         isReadOnly: _isProduct,
-                        fillColor: _isProduct ? (isDark ? Colors.black38 : Colors.grey.shade100) : inputColor,
+                        fillColor: _isProduct
+                            ? (isDark ? Colors.black38 : Colors.grey.shade100)
+                            : inputColor,
                         hintColor: hintColor,
                         fontWeight: FontWeight.w800,
                         customTextColor: Colors.green,
@@ -256,14 +306,19 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                   ],
                 ),
                 const SizedBox(height: 50),
-
                 SizedBox(
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      if (_issuerController.text.isEmpty || _clientController.text.isEmpty || _valueController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Preencha os campos obrigatórios."), backgroundColor: Colors.red));
+                      if (_issuerController.text.isEmpty ||
+                          _clientController.text.isEmpty ||
+                          _valueController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text("Preencha os campos obrigatórios."),
+                                backgroundColor: Colors.red));
                         return;
                       }
                       _showModelSelection(context);
@@ -273,11 +328,17 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                       foregroundColor: Colors.white,
                       elevation: 8,
                       shadowColor: primaryColor.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
                     child: Text(
-                      widget.receiptToEdit != null ? "ATUALIZAR E GERAR" : "GERAR DOCUMENTO",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      widget.receiptToEdit != null
+                          ? "ATUALIZAR E GERAR"
+                          : "GERAR DOCUMENTO",
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1),
                     ),
                   ),
                 ),
@@ -295,21 +356,35 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
       padding: const EdgeInsets.only(bottom: 12, left: 4),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.2),
+        style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Colors.grey,
+            letterSpacing: 1.2),
       ),
     );
   }
 
-  Widget _buildModernSegmentButton(String label, bool isSelected, Color primaryColor, Color textColor) {
+  Widget _buildModernSegmentButton(
+      String label, bool isSelected, Color primaryColor, Color textColor) {
     return GestureDetector(
       onTap: () => setState(() => _isProduct = label.contains("PRODUTO")),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).scaffoldBackgroundColor : Colors.transparent,
+          color: isSelected
+              ? Theme.of(context).scaffoldBackgroundColor
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, spreadRadius: 1)] : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 4,
+                      spreadRadius: 1)
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -346,7 +421,10 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
       decoration: BoxDecoration(
         color: fillColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).brightness == Brightness.light ? Colors.grey.shade200 : Colors.transparent),
+        border: Border.all(
+            color: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade200
+                : Colors.transparent),
       ),
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: isDense ? 2 : 6),
       child: TextField(
@@ -356,11 +434,13 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         maxLines: maxLines,
         inputFormatters: inputFormatters,
-        style: TextStyle(fontWeight: fontWeight, color: customTextColor, fontSize: fontSize),
+        style: TextStyle(
+            fontWeight: fontWeight, color: customTextColor, fontSize: fontSize),
         decoration: InputDecoration(
           icon: icon != null ? Icon(icon, color: hintColor, size: 22) : null,
           labelText: label,
-          labelStyle: TextStyle(color: hintColor, fontSize: 14, fontWeight: FontWeight.w500),
+          labelStyle: TextStyle(
+              color: hintColor, fontSize: 14, fontWeight: FontWeight.w500),
           hintText: hint,
           hintStyle: TextStyle(color: hintColor.withOpacity(0.7)),
           prefixText: prefixText,
@@ -391,13 +471,25 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+              Center(
+                  child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10)))),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Escolha o Estilo", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor)),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+                  Text("Escolha o Estilo",
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: textColor)),
+                  IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -406,28 +498,116 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                   padding: const EdgeInsets.only(bottom: 40),
                   children: [
                     _buildGroupTitle("ESSENCIAIS"),
-                    _buildModelOption(context, "DANFE", "Oficial e detalhado", Icons.receipt_long_rounded, Colors.blueGrey, ReceiptStyle.danfe),
-                    _buildModelOption(context, "Simples", "Econômico e direto", Icons.article_outlined, Colors.grey, ReceiptStyle.simple),
-                    _buildModelOption(context, "Executivo", "Azul Corporativo", Icons.business_center_rounded, const Color(0xFF0D47A1), ReceiptStyle.modern),
-
+                    _buildModelOption(
+                        context,
+                        "DANFE",
+                        "Oficial e detalhado",
+                        Icons.receipt_long_rounded,
+                        Colors.blueGrey,
+                        ReceiptStyle.danfe),
+                    _buildModelOption(
+                        context,
+                        "Simples",
+                        "Econômico e direto",
+                        Icons.article_outlined,
+                        Colors.grey,
+                        ReceiptStyle.simple),
+                    _buildModelOption(
+                        context,
+                        "Executivo",
+                        "Azul Corporativo",
+                        Icons.business_center_rounded,
+                        const Color(0xFF0D47A1),
+                        ReceiptStyle.modern),
                     _buildGroupTitle("PREMIUM & PRO (NOVO)"),
-                    _buildModelOption(context, "Elegante", "Minimalismo Fino", Icons.diamond_outlined, Colors.indigo, ReceiptStyle.prof_elegant),
-                    _buildModelOption(context, "Bold", "Alto Contraste", Icons.campaign_rounded, Colors.black, ReceiptStyle.prof_bold),
-                    _buildModelOption(context, "Arquitetura", "Linhas Técnicas", Icons.architecture_rounded, Colors.blueGrey, ReceiptStyle.prof_architect),
-                    _buildModelOption(context, "Neon", "Futurista Dark", Icons.bolt_rounded, Colors.purpleAccent, ReceiptStyle.prof_neon),
-                    _buildModelOption(context, "Natureza", "Eco Friendly", Icons.eco_rounded, Colors.green[800]!, ReceiptStyle.prof_nature),
-
+                    _buildModelOption(
+                        context,
+                        "Elegante",
+                        "Minimalismo Fino",
+                        Icons.diamond_outlined,
+                        Colors.indigo,
+                        ReceiptStyle.prof_elegant),
+                    _buildModelOption(
+                        context,
+                        "Bold",
+                        "Alto Contraste",
+                        Icons.campaign_rounded,
+                        Colors.black,
+                        ReceiptStyle.prof_bold),
+                    _buildModelOption(
+                        context,
+                        "Arquitetura",
+                        "Linhas Técnicas",
+                        Icons.architecture_rounded,
+                        Colors.blueGrey,
+                        ReceiptStyle.prof_architect),
+                    _buildModelOption(
+                        context,
+                        "Neon",
+                        "Futurista Dark",
+                        Icons.bolt_rounded,
+                        Colors.purpleAccent,
+                        ReceiptStyle.prof_neon),
+                    _buildModelOption(
+                        context,
+                        "Natureza",
+                        "Eco Friendly",
+                        Icons.eco_rounded,
+                        Colors.green[800]!,
+                        ReceiptStyle.prof_nature),
                     _buildGroupTitle("LUXO & NEGÓCIOS"),
-                    _buildModelOption(context, "Premium Gold", "Sofisticação", Icons.workspace_premium_rounded, Colors.amber[800]!, ReceiptStyle.premium),
-                    _buildModelOption(context, "Corporativo", "Invoice Internacional", Icons.apartment_rounded, Colors.red[900]!, ReceiptStyle.corporate),
-                    _buildModelOption(context, "Minimalista", "Design Clean Apple", Icons.circle_outlined, Colors.black, ReceiptStyle.minimal),
-
+                    _buildModelOption(
+                        context,
+                        "Premium Gold",
+                        "Sofisticação",
+                        Icons.workspace_premium_rounded,
+                        Colors.amber[800]!,
+                        ReceiptStyle.premium),
+                    _buildModelOption(
+                        context,
+                        "Corporativo",
+                        "Invoice Internacional",
+                        Icons.apartment_rounded,
+                        Colors.red[900]!,
+                        ReceiptStyle.corporate),
+                    _buildModelOption(
+                        context,
+                        "Minimalista",
+                        "Design Clean Apple",
+                        Icons.circle_outlined,
+                        Colors.black,
+                        ReceiptStyle.minimal),
                     _buildGroupTitle("CRIATIVOS & NICHOS"),
-                    _buildModelOption(context, "Tech Dev", "Estilo Terminal", Icons.terminal_rounded, Colors.green, ReceiptStyle.tech),
-                    _buildModelOption(context, "Obras", "Construção Civil", Icons.construction_rounded, Colors.orange[800]!, ReceiptStyle.construction),
-                    _buildModelOption(context, "Saúde", "Clínicas e Bem-estar", Icons.spa_rounded, Colors.teal, ReceiptStyle.health),
-                    _buildModelOption(context, "Criativo", "Moderno (Roxo)", Icons.auto_awesome_rounded, Colors.purple, ReceiptStyle.creative),
-                    _buildModelOption(context, "Retrô", "Nota Antiga", Icons.receipt_rounded, Colors.brown, ReceiptStyle.retro),
+                    _buildModelOption(
+                        context,
+                        "Tech Dev",
+                        "Estilo Terminal",
+                        Icons.terminal_rounded,
+                        Colors.green,
+                        ReceiptStyle.tech),
+                    _buildModelOption(
+                        context,
+                        "Obras",
+                        "Construção Civil",
+                        Icons.construction_rounded,
+                        Colors.orange[800]!,
+                        ReceiptStyle.construction),
+                    _buildModelOption(context, "Saúde", "Clínicas e Bem-estar",
+                        Icons.spa_rounded, Colors.teal, ReceiptStyle.health),
+                    _buildModelOption(
+                        context,
+                        "Criativo",
+                        "Moderno (Roxo)",
+                        Icons.auto_awesome_rounded,
+                        Colors.purple,
+                        ReceiptStyle.creative),
+                    _buildModelOption(
+                        context,
+                        "Retrô",
+                        "Nota Antiga",
+                        Icons.receipt_rounded,
+                        Colors.brown,
+                        ReceiptStyle.retro),
                   ],
                 ),
               ),
@@ -441,30 +621,47 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   Widget _buildGroupTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 10),
-      child: Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
+      child: Text(title,
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Colors.grey,
+              letterSpacing: 1.5)),
     );
   }
 
-  Widget _buildModelOption(BuildContext context, String title, String subtitle, IconData icon, Color color, ReceiptStyle style) {
+  Widget _buildModelOption(BuildContext context, String title, String subtitle,
+      IconData icon, Color color, ReceiptStyle style) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
-        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4))],
+        border: Border.all(
+            color: isDark ? Colors.transparent : Colors.grey.shade200),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4))
+              ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color)
-        ),
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+        subtitle: Text(subtitle,
+            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded,
+            size: 16, color: Colors.grey),
         onTap: () {
           Navigator.pop(context);
           _navigateToPreview(style);
@@ -482,18 +679,19 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
 
     String finalDescription = _descriptionController.text;
     if (_isProduct) {
-      finalDescription = "${_qtyController.text}x ${_descriptionController.text} (Un: R\$ ${_unitPriceController.text})";
+      finalDescription =
+          "${_qtyController.text}x ${_descriptionController.text} (Un: R\$ ${_unitPriceController.text})";
     }
 
     final receiptData = {
       'issuer': _issuerController.text,
       'pix': _pixController.text,
       'client': _clientController.text,
-      'service': finalDescription, 
+      'service': finalDescription,
       'rawService': _descriptionController.text,
       'value': _valueController.text,
       'date': _dateController.text,
-      'style': style.index, 
+      'style': style.index,
       'isProduct': _isProduct,
       'qty': _qtyController.text,
       'unitPrice': _unitPriceController.text,
@@ -541,12 +739,14 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
 
 class CurrencyInputFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
     if (newValue.selection.baseOffset == 0) {
       return newValue;
     }
 
-    double value = double.parse(newValue.text.replaceAll(RegExp(r'[^0-9]'), ''));
+    double value =
+        double.parse(newValue.text.replaceAll(RegExp(r'[^0-9]'), ''));
     final formatter = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     String newText = formatter.format(value / 100);
 
