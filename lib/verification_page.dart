@@ -18,44 +18,44 @@ class _VerificationPageState extends State<VerificationPage> {
   bool _isLoading = false;
 
   void _verify() async {
-    String cleanCode = _codeController.text.replaceAll(RegExp(r'[^0-9]'), '');
+  String cleanCode = _codeController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
-    if (cleanCode.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("O código deve ter 8 dígitos."),
-          backgroundColor: Colors.orange));
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    bool success;
-
-    if (widget.isRegistration) {
-      success = await ApiService().confirmRegister(widget.email, cleanCode);
-    } else {
-      success = await ApiService().confirmRegister(widget.email, cleanCode);
-    }
-
-    setState(() => _isLoading = false);
-
-    if (success && mounted) {
-      if (widget.isRegistration) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Conta ativada com sucesso!"),
-            backgroundColor: Colors.green));
-        Navigator.popUntil(context, (route) => route.isFirst);
-      } else {
-        Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => NewPasswordPage(email: widget.email)));
-      }
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Código inválido ou expirado."),
-          backgroundColor: Colors.red));
-    }
+  if (cleanCode.length < 8) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("O código deve ter 8 dígitos."),
+        backgroundColor: Colors.orange));
+    return;
   }
+
+  setState(() => _isLoading = true);
+  bool success;
+
+  if (widget.isRegistration) {
+    success = await ApiService().confirmRegister(widget.email, cleanCode);
+  } else {
+    success = await ApiService().validarCodigoRecuperacao(widget.email, cleanCode);
+  }
+
+  setState(() => _isLoading = false);
+
+  if (success && mounted) {
+    if (widget.isRegistration) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Conta ativada com sucesso!"),
+          backgroundColor: Colors.green));
+      Navigator.popUntil(context, (route) => route.isFirst);
+    } else {
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (_) => NewPasswordPage(email: widget.email)));
+    }
+  } else if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Código inválido ou expirado."),
+        backgroundColor: Colors.red));
+  }
+}
 
   @override
   Widget build(BuildContext context) {

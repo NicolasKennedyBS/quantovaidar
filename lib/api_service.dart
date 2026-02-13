@@ -121,6 +121,24 @@ class ApiService {
     }
   }
 
+  Future<bool> validarCodigoRecuperacao(String email, String code) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/validar-codigo'), 
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": email, 
+        "codigo": code.replaceAll(" ", "") 
+      }),
+    );
+    
+    final data = jsonDecode(response.body);
+    return data['success'] ?? false;
+  } catch (e) {
+    return false;
+  }
+}
+
   Future<bool> updateProfile(String tradeName, String pixKey) async {
     try {
       final prefs = await SharedPreferences.getInstance();

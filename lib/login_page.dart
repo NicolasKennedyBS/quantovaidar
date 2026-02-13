@@ -45,57 +45,108 @@ class _LoginPageState extends State<LoginPage> {
 
   void _forgotPass() {
     final emailForgot = TextEditingController();
+    bool isSending = false;
+
     showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-              title: const Text("Recuperar Senha"),
-              content: TextField(
-                  controller: emailForgot,
-                  decoration:
-                      const InputDecoration(labelText: "E-mail cadastrado")),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text("Cancelar")),
-                ElevatedButton(
-                    onPressed: () async {
-                      bool ok =
-                          await ApiService().forgotPassword(emailForgot.text);
-                      if (ok && mounted) {
-                        Navigator.pop(ctx);
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
+      context: context,
+      barrierDismissible:
+          !isSending,
+      builder: (ctx) => StatefulBuilder(
+          builder: (context, setModalState) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Recuperar Senha",
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Enviaremos um código de 8 dígitos para o seu e-mail.",
+                  style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailForgot,
+                enabled: !isSending,
+                decoration: InputDecoration(
+                  labelText: "E-mail cadastrado",
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white10
+                      : const Color(0xFFF5F7FA),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: isSending ? null : () => Navigator.pop(ctx),
+                child: const Text("Cancelar",
+                    style: TextStyle(color: Colors.grey))),
+            SizedBox(
+              width: 100,
+              child: ElevatedButton(
+                onPressed: isSending
+                    ? null
+                    : () async {
+                        if (emailForgot.text.isEmpty) return;
+
+                        setModalState(() => isSending = true);
+
+                        bool ok =
+                            await ApiService().forgotPassword(emailForgot.text);
+
+                        if (mounted) {
+                          if (ok) {
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
                                 builder: (_) => VerificationPage(
-                                    email: emailForgot.text,
-                                    isRegistration: false)));
-                      }
-                    },
-                    child: const Text("Enviar"))
-              ],
-            ));
+                                  email: emailForgot.text,
+                                  isRegistration: false,
+                                ),
+                              ),
+                            );
+                          } else {
+                            setModalState(() => isSending = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("E-mail não encontrado."),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4C86D9),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor:
+                      Colors.grey[300],
+                ),
+                child: isSending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text("Enviar"),
+              ),
+            )
+          ],
+        );
+      }),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 800;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const primaryColor = Color(0xFF4C86D9);
 
-    final lightTheme = ThemeData(
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: isWide ? Colors.white : const Color(0xFFF5F7FA),
-      colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4C86D9), brightness: Brightness.light),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: isWide ? const Color(0xFFF5F7FA) : Colors.white,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
-      ),
-    );
 
     final formContent = Center(
       child: SingleChildScrollView(
@@ -108,10 +159,14 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               if (!isWide) ...[
                 Center(
-                    child: Image.asset('assets/images/quantovaidartittle.png',
-                        height: 50,
-                        errorBuilder: (c, o, s) => const Icon(Icons.receipt,
-                            size: 50, color: Color(0xFF4C86D9)))),
+                  child: Image.asset(
+                    'assets/images/quantovaidartittle.png',
+                    height: 50,
+                    color: isDark ? Colors.white : null,
+                    errorBuilder: (c, o, s) => const Icon(Icons.receipt,
+                        size: 50, color: primaryColor),
+                  ),
+                ),
                 const SizedBox(height: 30),
               ],
               const Text("Bem-vindo de volta",
@@ -137,13 +192,13 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: const InputDecoration(
                       labelText: "Senha",
                       prefixIcon: Icon(Icons.lock_outline))),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               SizedBox(
                 height: 55,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4C86D9),
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
@@ -162,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
                               letterSpacing: 1.2)),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -171,17 +226,28 @@ class _LoginPageState extends State<LoginPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const RegisterPage()),
-                      );
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const RegisterPage()));
                     },
                     child: const Text("Registre-se agora",
                         style: TextStyle(
-                            color: Color(0xFF4C86D9),
-                            fontWeight: FontWeight.bold)),
+                            color: primaryColor, fontWeight: FontWeight.bold)),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: TextButton(
+                  onPressed: _forgotPass,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 30),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text("Esqueci minha senha",
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                ),
               ),
             ],
           ),
@@ -190,7 +256,7 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     return Theme(
-      data: lightTheme,
+      data: primaryTheme(isDark, isWide),
       child: Scaffold(
         body: isWide
             ? Row(
@@ -200,7 +266,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Color(0xFF4C86D9), Color(0xFF1E3A8A)],
+                          colors: [primaryColor, Color(0xFF1E3A8A)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -239,6 +305,25 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               )
             : formContent,
+      ),
+    );
+  }
+
+  ThemeData primaryTheme(bool isDark, bool isWide) {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: isWide ? Colors.white : const Color(0xFFF5F7FA),
+      colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4C86D9), brightness: Brightness.light),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isWide ? const Color(0xFFF5F7FA) : Colors.white,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
       ),
     );
   }
