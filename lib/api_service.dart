@@ -16,7 +16,7 @@ class ApiService {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<int> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/user/login'),
@@ -34,46 +34,120 @@ class ApiService {
         if (data['id'] != null) await prefs.setString('userId', data['id']);
         if (data['fullName'] != null)
           await prefs.setString('userName', data['fullName']);
-
-        if (data['defaultPixKey'] != null) {
+        if (data['defaultPixKey'] != null)
           await prefs.setString('default_pix', data['defaultPixKey']);
-        }
-        if (data['defaultTradeName'] != null) {
+        if (data['defaultTradeName'] != null)
           await prefs.setString('default_name', data['defaultTradeName']);
-        }
-        return true;
+
+        return 200;
       }
-      return false;
+      return response.statusCode;
     } catch (e) {
-      print("Erro Login: $e");
-      return false;
+      if (kDebugMode) print("Erro Login: $e");
+      return 500;
     }
   }
 
-  Future<bool> register({
+  Future<bool> registerUser({
     required String name,
     required String email,
     required String password,
-    required String pixKey,
+    String? pixKey,
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/user'),
+        Uri.parse('$baseUrl/user/registrar'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "fullName": name,
           "email": email,
           "password": password,
           "defaultTradeName": name,
+          "defaultPixKey": pixKey ?? "",
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) print("Erro Register: $e");
+      return false;
+    }
+  }
+
+  Future<bool> confirmRegister(String email, String code) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/user/confirmar-registro'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email, "codigo": code.replaceAll(" ", "")}),
+      );
+      final data = jsonDecode(response.body);
+      return data['success'] ?? false;
+    } catch (e) {
+      if (kDebugMode) print("Erro Confirm Register: $e");
+      return false;
+    }
+  }
+
+  Future<bool> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/user/esqueci-senha'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email}),
+      );
+      final data = jsonDecode(response.body);
+      return data['success'] ?? false;
+    } catch (e) {
+      if (kDebugMode) print("Erro Forgot Password: $e");
+      return false;
+    }
+  }
+
+  Future<bool> redefinirSenha(String email, String novaSenha) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/user/redefinir-senha'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email, "novaSenha": novaSenha}),
+      );
+      return jsonDecode(response.body)['success'] ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateProfile(String tradeName, String pixKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+
+      if (userId == null) return false;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/user/$userId'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "defaultTradeName": tradeName,
           "defaultPixKey": pixKey,
         }),
       );
 
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response.statusCode == 200;
     } catch (e) {
-      print("Erro Register: $e");
+      if (kDebugMode) print("Erro Update Profile: $e");
       return false;
     }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userName');
   }
 
   Future<List<dynamic>> getInvoices() async {
@@ -91,7 +165,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print("Erro Get Invoices: $e");
+      if (kDebugMode) print("Erro Get Invoices: $e");
       return [];
     }
   }
@@ -117,9 +191,7 @@ class ApiService {
       "totalValue": double.tryParse(cleanValue) ?? 0.0,
       "issueDate": DateTime.now().toIso8601String().substring(0, 10),
       "styleCode": receiptData['style'] ?? 0,
-      
-      "type": receiptData['type'] ?? 0, 
-      
+      "type": receiptData['type'] ?? 0,
       "description": receiptData['description'],
       "rawDescription": receiptData['rawDescription'],
       "itemUnit": receiptData['itemUnit'],
@@ -134,52 +206,19 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
-      
-      if (response.statusCode != 200) {
-         if (kDebugMode) print("Erro Server: ${response.body}");
-      }
-      
       return response.statusCode == 200;
     } catch (e) {
       if (kDebugMode) print("Erro Create Invoice: $e");
       return false;
     }
   }
+
   Future<bool> deleteInvoice(String id) async {
     try {
       final response = await http.delete(Uri.parse('$baseUrl/invoice/$id'));
       return response.statusCode == 200;
     } catch (e) {
-      print("Erro Delete: $e");
-      return false;
-    }
-  }
-
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
-    await prefs.remove('userName');
-  }
-
-  Future<bool> updateProfile(String tradeName, String pixKey) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-
-      if (userId == null) return false;
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/user/$userId'),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "defaultTradeName": tradeName,
-          "defaultPixKey": pixKey,
-        }),
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      print("Erro Update Profile: $e");
+      if (kDebugMode) print("Erro Delete: $e");
       return false;
     }
   }

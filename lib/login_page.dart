@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'home_page.dart';
 import 'register_page.dart';
+import 'verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,20 +18,62 @@ class _LoginPageState extends State<LoginPage> {
 
   void _login() async {
     setState(() => _isLoading = true);
-    final success =
+    final status =
         await ApiService().login(_emailController.text, _passController.text);
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const HomePage()));
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Falha no login. Verifique seus dados."),
-            backgroundColor: Colors.red),
-      );
+    if (mounted) {
+      if (status == 200) {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const HomePage()));
+      } else if (status == 401) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Conta inativa. Verifique seu e-mail."),
+            backgroundColor: Colors.orange));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => VerificationPage(
+                    email: _emailController.text, isRegistration: true)));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Credenciais inválidas."),
+            backgroundColor: Colors.red));
+      }
     }
+  }
+
+  void _forgotPass() {
+    final emailForgot = TextEditingController();
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text("Recuperar Senha"),
+              content: TextField(
+                  controller: emailForgot,
+                  decoration:
+                      const InputDecoration(labelText: "E-mail cadastrado")),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Cancelar")),
+                ElevatedButton(
+                    onPressed: () async {
+                      bool ok =
+                          await ApiService().forgotPassword(emailForgot.text);
+                      if (ok && mounted) {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => VerificationPage(
+                                    email: emailForgot.text,
+                                    isRegistration: false)));
+                      }
+                    },
+                    child: const Text("Enviar"))
+              ],
+            ));
   }
 
   @override
