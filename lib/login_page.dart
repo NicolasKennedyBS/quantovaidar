@@ -18,15 +18,17 @@ class _LoginPageState extends State<LoginPage> {
 
   void _login() async {
     setState(() => _isLoading = true);
-    final status =
-        await ApiService().login(_emailController.text, _passController.text);
+    final status = await ApiService().login(_emailController.text, _passController.text);
     setState(() => _isLoading = false);
 
     if (mounted) {
       if (status == 200) {
+        // Sucesso
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (_) => const HomePage()));
-      } else if (status == 401) {
+            
+      } else if (status == 403) { 
+        // ERRO 403 (FORBIDDEN) = CONTA INATIVA
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Conta inativa. Verifique seu e-mail."),
             backgroundColor: Colors.orange));
@@ -35,9 +37,17 @@ class _LoginPageState extends State<LoginPage> {
             MaterialPageRoute(
                 builder: (_) => VerificationPage(
                     email: _emailController.text, isRegistration: true)));
-      } else {
+                    
+      } else if (status == 401) { 
+        // ERRO 401 (UNAUTHORIZED) = SENHA INCORRETA OU EMAIL INEXISTENTE
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Credenciais inválidas."),
+            content: Text("E-mail ou senha incorretos."),
+            backgroundColor: Colors.red));
+            
+      } else {
+        // Outros erros de servidor (500, etc)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Erro ao conectar ao servidor."),
             backgroundColor: Colors.red));
       }
     }
