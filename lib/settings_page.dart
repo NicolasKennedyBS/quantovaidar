@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart'; // Importe adicionado
 import 'api_service.dart';
 import 'login_page.dart';
 
@@ -63,9 +64,24 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // Função para abrir a Política de Privacidade no navegador
+  Future<void> _abrirPoliticaPrivacidade() async {
+    final Uri url = Uri.parse('https://quantovaidar.com.br/privacidade.html');
+    
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Não foi possível abrir o link."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ValueListenableBuilder(
@@ -165,7 +181,22 @@ class _SettingsPageState extends State<SettingsPage> {
                           borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
+                  
+                  // Botão da Política de Privacidade
+                  TextButton.icon(
+                    onPressed: _abrirPoliticaPrivacidade,
+                    icon: const Icon(Icons.privacy_tip_outlined, color: Colors.grey, size: 20),
+                    label: const Text(
+                      "Política de Privacidade",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
                   Center(
                     child: Text(
                       "Usuário: ${_userName()}\nQuantoVaiDar? v1.0",
